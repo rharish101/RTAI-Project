@@ -24,6 +24,21 @@ $ source venv/bin/activate
 $ pip install -r requirements.txt
 ```
 
+For development, install the dev dependencies as follows:
+
+```bash
+$ pip install -r requirements-dev.txt
+```
+
+### Pre-commit hooks
+[pre-commit](https://pre-commit.com/) is used for managing hooks that run before each commit, to ensure code quality and run some basic tests.
+The `pre-commit` package should be installed when you install the dev dependencies.
+Install the pre-commit hooks for your copy of the repo as follows:
+
+```bash
+$ pre-commit install
+```
+
 ## Running the verifier
 
 We will run your verifier from `code` directory using the command:
