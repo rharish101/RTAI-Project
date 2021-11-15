@@ -65,10 +65,19 @@ class Verifier:
         """Analyze the affine layer."""
         raise NotImplementedError
 
-    # TODO: Harish
     def _analyze_norm(self, layer: Normalization) -> None:
         """Analyze the normalization layer."""
-        raise NotImplementedError
+        mean = layer.mean.squeeze()
+        std_dev = layer.sigma.squeeze()
+
+        self._upper_bound = (self._upper_bound - mean) / std_dev
+        self._lower_bound = (self._lower_bound - mean) / std_dev
+
+        self._upper_constraint[:, -1] -= mean
+        self._upper_constraint /= std_dev
+
+        self._lower_constraint[:, -1] -= mean
+        self._lower_constraint /= std_dev
 
     # TODO: Martin + Vandit
     def _analyze_spu(self, layer: SPU) -> None:
