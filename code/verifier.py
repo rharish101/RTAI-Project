@@ -60,10 +60,20 @@ class Verifier:
         upper_bound_others = self._upper_bound[false_lbls].amax()
         return lower_bound_true_lbl > upper_bound_others
 
-    # TODO: Harish
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
-        raise NotImplementedError
+        self._upper_constraint = torch.cat(
+            [layer.weight, layer.bias.unsqueeze(-1)], dim=1
+        )
+        self._lower_constraint = self._upper_constraint.clone()
+
+        def add_bias(x: torch.Tensor) -> torch.Tensor:
+            return torch.cat([x, torch.ones(1, device=DEVICE)])
+
+        x = self._upper_constraint @ add_bias(self._upper_bound)
+        y = self._upper_constraint @ add_bias(self._lower_bound)
+        self._upper_bound = torch.maximum(x, y)
+        self._lower_bound = torch.minimum(x, y)
 
     # TODO: Harish
     def _analyze_norm(self, layer: Normalization) -> None:
