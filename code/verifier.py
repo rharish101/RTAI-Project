@@ -1,3 +1,4 @@
+"""Code to verify feed-forward MNIST networks."""
 import argparse
 
 import torch
@@ -8,10 +9,12 @@ INPUT_SIZE = 28
 
 
 def analyze(net, inputs, eps, true_label):
+    """Analyze the network for the given input."""
     return 0
 
 
 def main():
+    """Run the main function."""
     parser = argparse.ArgumentParser(
         description="Neural network verification using DeepPoly relaxation"
     )
