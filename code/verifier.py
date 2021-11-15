@@ -3,17 +3,20 @@ import argparse
 
 import torch
 from networks import FullyConnected
+from typing_extensions import Final
 
-DEVICE = "cpu"
-INPUT_SIZE = 28
+DEVICE: Final = "cpu"
+INPUT_SIZE: Final = 28
 
 
-def analyze(net, inputs, eps, true_label):
+def analyze(
+    net: FullyConnected, inputs: torch.Tensor, eps: float, true_label: int
+) -> bool:
     """Analyze the network for the given input."""
-    return 0
+    return False
 
 
-def main():
+def main() -> None:
     """Run the main function."""
     parser = argparse.ArgumentParser(
         description="Neural network verification using DeepPoly relaxation"
