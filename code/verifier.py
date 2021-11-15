@@ -2,18 +2,81 @@
 import argparse
 
 import torch
-from networks import FullyConnected
+from networks import SPU, FullyConnected, Normalization
 from typing_extensions import Final
 
 DEVICE: Final = "cpu"
 INPUT_SIZE: Final = 28
 
 
+class Verifier:
+    """Class that analyzes a network."""
+
+    def __init__(self, net: FullyConnected):
+        """Store the network."""
+        self.net = net.to(DEVICE)
+
+    def analyze(self, inputs: torch.Tensor, true_lbl: int, eps: float) -> bool:
+        """Analyze the given input.
+
+        Args:
+            inputs: The 2D inputs to the model corresponding to one image
+            true_label: The corresponding true label
+            eps: The size of the L∞ norm ball around the inputs
+
+        Returns:
+            Whether the network is verified to be correct for the given region
+        """
+        # Remove the singleton batch and channel axes
+        inputs = inputs.flatten()
+
+        self._upper_bound = inputs + eps
+        self._lower_bound = inputs - eps
+
+        for layer in self.net.layers:
+            if isinstance(layer, torch.nn.Linear):
+                self._analyze_affine(layer)
+            elif isinstance(layer, Normalization):
+                self._analyze_norm(layer)
+            elif isinstance(layer, SPU):
+                self._analyze_spu(layer)
+            elif isinstance(layer, torch.nn.Flatten):
+                pass  # Ignore flatten
+            else:
+                raise NotImplementedError(
+                    f"Layer type {type(layer)} is not supported"
+                )
+
+        lower_bound_true_lbl = self._lower_bound[true_lbl]
+        false_lbls = [
+            i for i in range(len(self._upper_bound)) if i != true_lbl
+        ]
+        upper_bound_others = self._upper_bound[false_lbls].amax()
+        return lower_bound_true_lbl > upper_bound_others
+
+    # TODO: Harish
+    def _analyze_affine(self, layer: torch.nn.Linear) -> None:
+        """Analyze the affine layer."""
+        raise NotImplementedError
+
+    # TODO: Harish
+    def _analyze_norm(self, layer: Normalization) -> None:
+        """Analyze the normalization layer."""
+        raise NotImplementedError
+
+    # TODO: Martin + Vandit
+    def _analyze_spu(self, layer: SPU) -> None:
+        """Analyze the SPU layer."""
+        raise NotImplementedError
+
+
 def analyze(
     net: FullyConnected, inputs: torch.Tensor, eps: float, true_label: int
 ) -> bool:
     """Analyze the network for the given input."""
-    return False
+    with torch.inference_mode():
+        verifier = Verifier(net)
+        return verifier.analyze(inputs, true_label, eps)
 
 
 def main() -> None:
