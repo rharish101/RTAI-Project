@@ -33,6 +33,12 @@ class Verifier:
         self._upper_bound = inputs + eps
         self._lower_bound = inputs - eps
 
+        # Constraints must be of the shape:
+        # [curr_layer_neurons, prev_layer_neurons + 1]
+        # Thus, it acts as a weights + bias matrix (for convenience)
+        self._upper_constraint = self._upper_bound.unsqueeze(-1)
+        self._lower_constraint = self._lower_bound.unsqueeze(-1)
+
         for layer in self.net.layers:
             if isinstance(layer, torch.nn.Linear):
                 self._analyze_affine(layer)
