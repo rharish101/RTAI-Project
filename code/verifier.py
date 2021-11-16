@@ -67,11 +67,8 @@ class Verifier:
         )
         self._lower_constraint = self._upper_constraint.clone()
 
-        def add_bias(x: torch.Tensor) -> torch.Tensor:
-            return torch.cat([x, torch.ones(1, device=DEVICE)])
-
-        x = self._upper_constraint @ add_bias(self._upper_bound)
-        y = self._upper_constraint @ add_bias(self._lower_bound)
+        x = layer.weight @ self._upper_bound + layer.bias
+        y = layer.weight @ self._lower_bound + layer.bias
         self._upper_bound = torch.maximum(x, y)
         self._lower_bound = torch.minimum(x, y)
 
