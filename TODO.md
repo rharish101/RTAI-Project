@@ -1,8 +1,6 @@
 # TODOs
 
 ## Immediate
-* Write skeleton for `analyze` - Harish
-* Handle linear and norm layers - Harish
 * Handle SPU crossing - Vandit
 * Handle SPU non-crossing - Martin
 
