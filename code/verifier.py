@@ -30,14 +30,14 @@ class Verifier:
         # Remove the singleton batch and channel axes
         inputs = inputs.flatten()
 
-        self._upper_bound = inputs + eps
-        self._lower_bound = inputs - eps
+        self._upper_bound = [inputs + eps]
+        self._lower_bound = [inputs - eps]
 
         # Constraints must be of the shape:
         # [curr_layer_neurons, prev_layer_neurons + 1]
         # Thus, it acts as a weights + bias matrix (for convenience)
-        self._upper_constraint = self._upper_bound.unsqueeze(-1)
-        self._lower_constraint = self._lower_bound.unsqueeze(-1)
+        self._upper_constraint = [self._upper_bound[0].unsqueeze(-1)]
+        self._lower_constraint = [self._lower_bound[0].unsqueeze(-1)]
 
         for layer in self.net.layers:
             if isinstance(layer, torch.nn.Linear):
@@ -53,34 +53,33 @@ class Verifier:
                     f"Layer type {type(layer)} is not supported"
                 )
 
-        lower_bound_true_lbl = self._lower_bound[true_lbl]
+        lower_bound_true_lbl = self._lower_bound[-1][true_lbl]
         false_lbls = [
-            i for i in range(len(self._upper_bound)) if i != true_lbl
+            i for i in range(len(self._upper_bound[-1])) if i != true_lbl
         ]
-        upper_bound_others = self._upper_bound[false_lbls].amax()
+        upper_bound_others = self._upper_bound[-1][false_lbls].amax()
         return lower_bound_true_lbl > upper_bound_others
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
-        self._upper_constraint = torch.cat(
-            [layer.weight, layer.bias.unsqueeze(-1)], dim=1
-        )
-        self._lower_constraint = self._upper_constraint.clone()
+        constraint = torch.cat([layer.weight, layer.bias.unsqueeze(-1)], dim=1)
+        self._upper_constraint.append(constraint)
+        self._lower_constraint.append(constraint)
 
         bounds_for_upper = torch.where(
             layer.weight > 0,
-            self._upper_bound.unsqueeze(0),
-            self._lower_bound.unsqueeze(0),
+            self._upper_bound[-1].unsqueeze(0),
+            self._lower_bound[-1].unsqueeze(0),
         )
         bounds_for_lower = torch.where(
             layer.weight <= 0,
-            self._upper_bound.unsqueeze(0),
-            self._lower_bound.unsqueeze(0),
+            self._upper_bound[-1].unsqueeze(0),
+            self._lower_bound[-1].unsqueeze(0),
         )
-        self._upper_bound = (
+        self._upper_bound.append(
             torch.sum(bounds_for_upper * layer.weight, 1) + layer.bias
         )
-        self._lower_bound = (
+        self._lower_bound.append(
             torch.sum(bounds_for_lower * layer.weight, 1) + layer.bias
         )
 
@@ -89,16 +88,16 @@ class Verifier:
         mean = layer.mean.squeeze()
         std_dev = layer.sigma.squeeze()
 
-        num_neurons = len(self._upper_bound)
-        self._upper_bound = (self._upper_bound - mean) / std_dev
-        self._lower_bound = (self._lower_bound - mean) / std_dev
+        num_neurons = len(self._upper_bound[-1])
+        self._upper_bound.append((self._upper_bound[-1] - mean) / std_dev)
+        self._lower_bound.append((self._lower_bound[-1] - mean) / std_dev)
 
-        self._upper_constraint = torch.eye(
-            num_neurons, num_neurons + 1, device=DEVICE
-        )
-        self._upper_constraint[:, -1] = -mean
-        self._upper_constraint /= std_dev
-        self._lower_constraint = self._upper_constraint.clone()
+        constraint = torch.eye(num_neurons, num_neurons + 1, device=DEVICE)
+        constraint[:, -1] = -mean
+        constraint /= std_dev
+
+        self._upper_constraint.append(constraint)
+        self._lower_constraint.append(constraint)
 
     @staticmethod
     def _get_parabola_tangent(x: torch.Tensor) -> torch.Tensor:
@@ -115,34 +114,32 @@ class Verifier:
 
     def _analyze_spu(self, layer: SPU) -> None:
         """Analyze the SPU layer."""
-        upper_y = layer(self._upper_bound)
-        lower_y = layer(self._lower_bound)
+        upper_x = self._upper_bound[-1]
+        lower_x = self._lower_bound[-1]
+        upper_y = layer(upper_x)
+        lower_y = layer(lower_x)
 
-        self._upper_bound = torch.maximum(upper_y, lower_y)
-        self._lower_bound = torch.minimum(upper_y, lower_y)
+        self._upper_bound.append(torch.maximum(upper_y, lower_y))
+        self._lower_bound.append(torch.minimum(upper_y, lower_y))
 
-        joining_slope = (upper_y - lower_y) / (
-            self._upper_bound - self._lower_bound
-        )
-        joining_intercept = upper_y - joining_slope * self._upper_bound
+        joining_slope = (upper_y - lower_y) / (upper_x - lower_x)
+        joining_intercept = upper_y - joining_slope * upper_x
         joining_constraint = torch.cat(
             [joining_slope.diag(), joining_intercept.unsqueeze(1)], dim=1
         )
 
         # lower_bound > 0
-        case_right_mask = (self._lower_bound > 0).unsqueeze(1)
+        case_right_mask = (lower_x > 0).unsqueeze(1)
         parabola_slope, parabola_intercept = self._get_parabola_tangent(
-            self._lower_bound
+            lower_x
         )
         parabola_constraint = torch.cat(
             [parabola_slope.diag(), parabola_intercept.unsqueeze(1)], dim=1
         )
 
         # upper_bound < 0
-        case_left_mask = (self._upper_bound <= 0).unsqueeze(1)
-        sigmoid_slope, sigmoid_intercept = self._get_sigmoid_tangent(
-            self._lower_bound
-        )
+        case_left_mask = (upper_x <= 0).unsqueeze(1)
+        sigmoid_slope, sigmoid_intercept = self._get_sigmoid_tangent(lower_x)
         sigmoid_constraint = torch.cat(
             [sigmoid_slope.diag(), sigmoid_intercept.unsqueeze(1)], dim=1
         )
@@ -151,7 +148,7 @@ class Verifier:
         crossing_mask = ~case_left_mask & ~case_right_mask
 
         # Set lower constraint as the line y = -0.5
-        num_neurons = len(self._upper_bound)
+        num_neurons = len(upper_x)
         lowest_point_constraint = torch.zeros(
             (num_neurons, num_neurons + 1), device=DEVICE
         )
@@ -160,7 +157,7 @@ class Verifier:
         # Set upper constraint based on whether upper bound is below tangent
         # at lower bound or above
         sigmoid_tangent_value = (
-            sigmoid_slope * self._upper_bound + sigmoid_intercept - upper_y
+            sigmoid_slope * upper_x + sigmoid_intercept - upper_y
         )
         crossing_lesser_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
         # If u is less than intersection point, set upper constraint as
@@ -170,12 +167,12 @@ class Verifier:
             + ~crossing_lesser_mask * joining_constraint
         )
 
-        self._upper_constraint = (
+        self._upper_constraint.append(
             case_right_mask * joining_constraint
             + case_left_mask * sigmoid_constraint
             + crossing_mask * crossing_upper_constraint
         )
-        self._lower_constraint = (
+        self._lower_constraint.append(
             case_right_mask * parabola_constraint
             + case_left_mask * joining_constraint
             + crossing_mask * lowest_point_constraint
