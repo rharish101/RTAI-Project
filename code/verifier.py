@@ -86,57 +86,63 @@ class Verifier:
         self._lower_constraint[:, -1] -= mean
         self._lower_constraint /= std_dev
 
+    @staticmethod
+    def _get_parabola_tangent(x: torch.Tensor) -> torch.Tensor:
+        slope = 2 * x
+        intercept = -(x ** 2) - -0.5
+        return slope, intercept
+
+    @staticmethod
+    def _get_sigmoid_tangent(x: torch.Tensor) -> torch.Tensor:
+        sigmoid = 1 / (1 + torch.exp(-x))
+        slope = -sigmoid * (1 - sigmoid)
+        intercept = -sigmoid - slope * x
+        return slope, intercept
+
     def _analyze_spu(self, layer: SPU) -> None:
         """Analyze the SPU layer."""
-        upper_y = layer.forward(self._upper_bound)
-        lower_y = layer.forward(self._lower_bound)
+        upper_y = layer(self._upper_bound)
+        lower_y = layer(self._lower_bound)
 
-        if self._lower_bound > 0 and self._upper_bound > 0:
-            mid_y = (upper_y + lower_y) / 2
+        self._upper_bound = torch.maximum(upper_y, lower_y)
+        self._lower_bound = torch.minimum(upper_y, lower_y)
 
-            upper_slope = (upper_y - lower_y) / (
-                self._upper_bound - self._lower_bound
-            )
-            upper_intercept = (
-                self._lower_bound * upper_y - self._upper_bound * lower_y
-            ) / (self._upper_bound - self._lower_bound)
-            self._upper_constraint = torch.cat(
-                [upper_slope, upper_intercept], dim=1
-            )
-            self._upper_bound = (
-                upper_slope * self._upper_bound + upper_intercept
-            )
+        joining_slope = (upper_y - lower_y) / (
+            self._upper_bound - self._lower_bound
+        )
+        joining_intercept = (
+            self._lower_bound * upper_y - self._upper_bound * lower_y
+        ) / (self._upper_bound - self._lower_bound)
+        joining_constraint = torch.cat(
+            [joining_slope.diag(), joining_intercept.unsqueeze(1)], dim=1
+        )
 
-            lower_slope = (mid_y - lower_y) / (
-                self._upper_bound - self._lower_bound
-            )
-            lower_intercept = (
-                self._lower_bound * mid_y - self._upper_bound * lower_y
-            ) / (self._upper_bound - self._lower_bound)
-            self._lower_constraint = torch.cat(
-                [lower_slope, lower_intercept], dim=1
-            )
-            self._lower_bound = (
-                lower_slope * self._lower_bound + lower_intercept
-            )
-        elif self._lower_bound <= 0 and self._upper_bound <= 0:
-            self._upper_constraint = torch.cat(
-                [torch.zeros(upper_y.size()), upper_y], dim=1
-            )
-            self._upper_bound = upper_y
+        # lower_bound > 0
+        case_right_mask = (self._lower_bound > 0).unsqueeze(1)
+        parabola_slope, parabola_intercept = self._get_parabola_tangent(
+            self._lower_bound
+        )
+        parabola_constraint = torch.cat(
+            [parabola_slope.diag(), parabola_intercept.unsqueeze(1)], dim=1
+        )
 
-            lower_slope = (upper_y - lower_y) / (
-                self._upper_bound - self._lower_bound
-            )
-            lower_intercept = (
-                self._lower_bound * upper_y - self._upper_bound * lower_y
-            ) / (self._upper_bound - self._lower_bound)
-            self._lower_constraint = torch.cat(
-                [lower_slope, lower_intercept], dim=1
-            )
-            self._lower_bound = (
-                lower_slope * self._lower_bound + lower_intercept
-            )
+        # upper_bound < 0
+        case_left_mask = (self._upper_bound <= 0).unsqueeze(1)
+        sigmoid_slope, sigmoid_intercept = self._get_sigmoid_tangent(
+            self._lower_bound
+        )
+        sigmoid_constraint = torch.cat(
+            [sigmoid_slope.diag(), sigmoid_intercept.unsqueeze(1)], dim=1
+        )
+
+        self._upper_constraint = (
+            case_right_mask * joining_constraint
+            + case_left_mask * sigmoid_constraint
+        )
+        self._lower_constraint = (
+            case_right_mask * parabola_constraint
+            + case_left_mask * joining_constraint
+        )
 
 
 def analyze(
