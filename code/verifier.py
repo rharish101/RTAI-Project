@@ -77,14 +77,16 @@ class Verifier:
         mean = layer.mean.squeeze()
         std_dev = layer.sigma.squeeze()
 
+        num_neurons = len(self._upper_bound)
         self._upper_bound = (self._upper_bound - mean) / std_dev
         self._lower_bound = (self._lower_bound - mean) / std_dev
 
-        self._upper_constraint[:, -1] -= mean
+        self._upper_constraint = torch.eye(
+            num_neurons, num_neurons + 1, device=DEVICE
+        )
+        self._upper_constraint[:, -1] = -mean
         self._upper_constraint /= std_dev
-
-        self._lower_constraint[:, -1] -= mean
-        self._lower_constraint /= std_dev
+        self._lower_constraint = self._upper_constraint.clone()
 
     @staticmethod
     def _get_parabola_tangent(x: torch.Tensor) -> torch.Tensor:
