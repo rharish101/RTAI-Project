@@ -67,8 +67,8 @@ class Verifier:
         )
         self._lower_constraint = self._upper_constraint.clone()
 
-        x = layer.weight @ self._upper_bound + layer.bias
-        y = layer.weight @ self._lower_bound + layer.bias
+        x = layer(self._upper_bound)
+        y = layer(self._lower_bound)
         self._upper_bound = torch.maximum(x, y)
         self._lower_bound = torch.minimum(x, y)
 
