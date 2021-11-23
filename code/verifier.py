@@ -135,13 +135,38 @@ class Verifier:
             [sigmoid_slope.diag(), sigmoid_intercept.unsqueeze(1)], dim=1
         )
 
+        # Crossing case
+        crossing_mask = ~case_left_mask & ~case_right_mask
+
+        # Set lower constraint as the line y = -0.5
+        num_neurons = len(self._upper_bound)
+        lowest_point_constraint = torch.zeros(
+            (num_neurons, num_neurons + 1), device=DEVICE
+        )
+        lowest_point_constraint[:, -1] = -0.5
+
+        # Set upper constraint based on whether upper bound is below tangent
+        # at lower bound or above
+        sigmoid_tangent_value = (
+            sigmoid_slope * self._upper_bound + sigmoid_intercept - upper_y
+        )
+        crossing_lesser_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
+        # If u is less than intersection point, set upper constraint as
+        # the tangent to the sigmoid part, else the joining line
+        crossing_upper_constraint = (
+            crossing_lesser_mask * sigmoid_constraint
+            + ~crossing_lesser_mask * joining_constraint
+        )
+
         self._upper_constraint = (
             case_right_mask * joining_constraint
             + case_left_mask * sigmoid_constraint
+            + crossing_mask * crossing_upper_constraint
         )
         self._lower_constraint = (
             case_right_mask * parabola_constraint
             + case_left_mask * joining_constraint
+            + crossing_mask * lowest_point_constraint
         )
 
 
