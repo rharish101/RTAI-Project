@@ -124,9 +124,7 @@ class Verifier:
         joining_slope = (upper_y - lower_y) / (
             self._upper_bound - self._lower_bound
         )
-        joining_intercept = (
-            self._lower_bound * upper_y - self._upper_bound * lower_y
-        ) / (self._upper_bound - self._lower_bound)
+        joining_intercept = upper_y - joining_slope * self._upper_bound
         joining_constraint = torch.cat(
             [joining_slope.diag(), joining_intercept.unsqueeze(1)], dim=1
         )
