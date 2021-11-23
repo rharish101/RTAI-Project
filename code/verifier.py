@@ -67,10 +67,22 @@ class Verifier:
         )
         self._lower_constraint = self._upper_constraint.clone()
 
-        x = layer(self._upper_bound)
-        y = layer(self._lower_bound)
-        self._upper_bound = torch.maximum(x, y)
-        self._lower_bound = torch.minimum(x, y)
+        bounds_for_upper = torch.where(
+            layer.weight > 0,
+            self._upper_bound.unsqueeze(0),
+            self._lower_bound.unsqueeze(0),
+        )
+        bounds_for_lower = torch.where(
+            layer.weight <= 0,
+            self._upper_bound.unsqueeze(0),
+            self._lower_bound.unsqueeze(0),
+        )
+        self._upper_bound = (
+            torch.sum(bounds_for_upper * layer.weight, 1) + layer.bias
+        )
+        self._lower_bound = (
+            torch.sum(bounds_for_lower * layer.weight, 1) + layer.bias
+        )
 
     def _analyze_norm(self, layer: Normalization) -> None:
         """Analyze the normalization layer."""
