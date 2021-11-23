@@ -86,10 +86,57 @@ class Verifier:
         self._lower_constraint[:, -1] -= mean
         self._lower_constraint /= std_dev
 
-    # TODO: Martin + Vandit
     def _analyze_spu(self, layer: SPU) -> None:
         """Analyze the SPU layer."""
-        raise NotImplementedError
+        upper_y = layer.forward(self._upper_bound)
+        lower_y = layer.forward(self._lower_bound)
+
+        if self._lower_bound > 0 and self._upper_bound > 0:
+            mid_y = (upper_y + lower_y) / 2
+
+            upper_slope = (upper_y - lower_y) / (
+                self._upper_bound - self._lower_bound
+            )
+            upper_intercept = (
+                self._lower_bound * upper_y - self._upper_bound * lower_y
+            ) / (self._upper_bound - self._lower_bound)
+            self._upper_constraint = torch.cat(
+                [upper_slope, upper_intercept], dim=1
+            )
+            self._upper_bound = (
+                upper_slope * self._upper_bound + upper_intercept
+            )
+
+            lower_slope = (mid_y - lower_y) / (
+                self._upper_bound - self._lower_bound
+            )
+            lower_intercept = (
+                self._lower_bound * mid_y - self._upper_bound * lower_y
+            ) / (self._upper_bound - self._lower_bound)
+            self._lower_constraint = torch.cat(
+                [lower_slope, lower_intercept], dim=1
+            )
+            self._lower_bound = (
+                lower_slope * self._lower_bound + lower_intercept
+            )
+        elif self._lower_bound <= 0 and self._upper_bound <= 0:
+            self._upper_constraint = torch.cat(
+                [torch.zeros(upper_y.size()), upper_y], dim=1
+            )
+            self._upper_bound = upper_y
+
+            lower_slope = (upper_y - lower_y) / (
+                self._upper_bound - self._lower_bound
+            )
+            lower_intercept = (
+                self._lower_bound * upper_y - self._upper_bound * lower_y
+            ) / (self._upper_bound - self._lower_bound)
+            self._lower_constraint = torch.cat(
+                [lower_slope, lower_intercept], dim=1
+            )
+            self._lower_bound = (
+                lower_slope * self._lower_bound + lower_intercept
+            )
 
 
 def analyze(
