@@ -72,9 +72,9 @@ class Verifier:
             self._lower_bound[-1].unsqueeze(0),
         )
         bounds_for_lower = torch.where(
-            layer.weight <= 0,
-            self._upper_bound[-1].unsqueeze(0),
+            layer.weight > 0,
             self._lower_bound[-1].unsqueeze(0),
+            self._upper_bound[-1].unsqueeze(0),
         )
         self._upper_bound.append(
             torch.sum(bounds_for_upper * layer.weight, 1) + layer.bias
