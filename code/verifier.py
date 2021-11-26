@@ -47,11 +47,13 @@ class Verifier:
             elif isinstance(layer, SPU):
                 self._analyze_spu(layer)
             elif isinstance(layer, torch.nn.Flatten):
-                pass  # Ignore flatten
+                continue  # Ignore flatten
             else:
                 raise NotImplementedError(
                     f"Layer type {type(layer)} is not supported"
                 )
+
+            self._back_substitute()
 
         lower_bound_true_lbl = self._lower_bound[-1][true_lbl]
         false_lbls = [
@@ -176,6 +178,45 @@ class Verifier:
             case_right_mask * parabola_constraint
             + case_left_mask * joining_constraint
             + crossing_mask * lowest_point_constraint
+        )
+
+    def _back_substitute(self) -> None:
+        """Make constraints more precise with back-substitution."""
+        curr_upper_constr = self._upper_constraint[-1]
+        curr_lower_constr = self._lower_constraint[-1]
+
+        for prev_upper_constr, prev_lower_constr in zip(
+            self._upper_constraint[-2::-1], self._lower_constraint[-2::-1]
+        ):
+            # Neurons: A -> B -> C
+            x = torch.where(
+                (curr_upper_constr[:, :-1] > 0).unsqueeze(-1),  # CxBx1
+                prev_upper_constr.unsqueeze(0),  # 1xBx(A+1)
+                prev_lower_constr.unsqueeze(0),  # 1xBx(A+1)
+            )  # CxBx(A+1)
+            x = torch.sum(
+                x * curr_upper_constr[:, :-1].unsqueeze(-1), dim=1
+            )  # Cx(A+1)
+            x[:, -1] += curr_upper_constr[:, -1]
+
+            y = torch.where(
+                (curr_lower_constr[:, :-1] > 0).unsqueeze(-1),  # CxBx1
+                prev_lower_constr.unsqueeze(0),  # 1xBx(A+1)
+                prev_upper_constr.unsqueeze(0),  # 1xBx(A+1)
+            )  # CxBx(A+1)
+            y = torch.sum(
+                y * curr_lower_constr[:, :-1].unsqueeze(-1), dim=1
+            )  # Cx(A+1)
+            y[:, -1] += curr_lower_constr[:, -1]
+
+            curr_upper_constr = x
+            curr_lower_constr = y
+
+        self._upper_bound[-1] = torch.minimum(
+            self._upper_bound[-1], curr_upper_constr.squeeze(1)
+        )
+        self._lower_bound[-1] = torch.maximum(
+            self._lower_bound[-1], curr_lower_constr.squeeze(1)
         )
 
 
