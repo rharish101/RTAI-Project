@@ -33,8 +33,8 @@ $ pip install -r requirements-dev.txt
 ### Pre-commit hooks
 [pre-commit](https://pre-commit.com/) is used for managing hooks that run before each commit, to ensure code quality and run some basic tests.
 The `pre-commit` package should be installed when you install the dev dependencies.
-Install the pre-commit hooks for your copy of the repo as follows:
 
+You need to install the pre-commit hooks for your copy of the repo as follows:
 ```bash
 $ pre-commit install
 ```
