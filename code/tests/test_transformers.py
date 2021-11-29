@@ -43,11 +43,14 @@ def test_spu(lower_bound, upper_bound) -> None:
     inputs = torch.from_numpy(inputs_np)  # dim: NUM_TEST_POINTS x D
     outputs = layer(inputs)  # dim: NUM_TEST_POINTS x D
 
+    # To compensate for floating-point precision
+    eps = torch.finfo(outputs.dtype).eps
+
     # Test bounds
     spu_upper_bound = verifier._upper_bound[-1]  # dim: D
     spu_lower_bound = verifier._lower_bound[-1]  # dim: D
-    assert (outputs >= spu_lower_bound.unsqueeze(0)).all()
-    assert (outputs <= spu_upper_bound.unsqueeze(0)).all()
+    assert (outputs >= spu_lower_bound.unsqueeze(0) - eps).all()
+    assert (outputs <= spu_upper_bound.unsqueeze(0) + eps).all()
 
     inputs_with_bias = torch.cat(
         [inputs, torch.ones(len(inputs), 1, device=DEVICE)], dim=1
@@ -62,5 +65,5 @@ def test_spu(lower_bound, upper_bound) -> None:
     )
 
     # Test constraints
-    assert (outputs >= constraint_lower_bound).all()
-    assert (outputs <= constraint_upper_bound).all()
+    assert (outputs >= constraint_lower_bound - eps).all()
+    assert (outputs <= constraint_upper_bound + eps).all()
