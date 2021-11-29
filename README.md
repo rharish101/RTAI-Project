@@ -39,6 +39,20 @@ You need to install the pre-commit hooks for your copy of the repo as follows:
 $ pre-commit install
 ```
 
+### Testing
+[pytest](https://docs.pytest.org/) is used to run unit tests manually.
+The `pytest` package should be installed when you install the dev dependencies.
+
+To run all unit tests, go to the `code` directory in this repo, and run:
+```bash
+$ python -m pytest
+```
+
+To run only tests with the pattern *pattern* in their names, use the `-k` flag as follows:
+```bash
+$ python -m pytest -k 'pattern'
+```
+
 ## Running the verifier
 
 We will run your verifier from `code` directory using the command:

@@ -104,7 +104,7 @@ class Verifier:
     @staticmethod
     def _get_parabola_tangent(x: torch.Tensor) -> torch.Tensor:
         slope = 2 * x
-        intercept = -(x ** 2) - -0.5
+        intercept = -(x ** 2) - 0.5
         return slope, intercept
 
     @staticmethod
