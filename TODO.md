@@ -4,9 +4,7 @@
 * Unit tests:
   - Affine - Vandit
   - Norm - Vandit
-  - SPU simple - Martin
-  - SPU crossing - Harish
+  - Back-substitution - Martin
 
 ## Future
-* Unit tests for back-substitution
 * PGD for generating test cases
