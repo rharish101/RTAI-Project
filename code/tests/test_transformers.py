@@ -14,7 +14,6 @@ NUM_TEST_POINTS: Final = 1000
 @pytest.mark.parametrize(
     "lower_bound, upper_bound",
     [
-        (np.array([-1.0]), np.array([1.0])),
         (np.array([-1e-4]), np.array([1e2])),
         (np.array([-5.0]), np.array([1e-4])),
         (np.array([-5.0, -1e-4]), np.array([1e-4, 1e2])),
