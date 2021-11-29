@@ -102,17 +102,36 @@ class Verifier:
         self._lower_constraint.append(constraint)
 
     @staticmethod
-    def _get_parabola_tangent(x: torch.Tensor) -> torch.Tensor:
+    def _line_to_constraint(
+        slope: torch.Tensor, intercept: torch.Tensor
+    ) -> torch.Tensor:
+        """Get the constraint matrix from the slope and intercept."""
+        return torch.cat([slope.diagflat(), intercept.unsqueeze(1)], dim=1)
+
+    @classmethod
+    def _get_joining_line_constr(
+        cls,
+        x1: torch.Tensor,
+        y1: torch.Tensor,
+        x2: torch.Tensor,
+        y2: torch.Tensor,
+    ) -> torch.Tensor:
+        slope = (y2 - y1) / (x2 - x1)
+        intercept = y2 - slope * x2
+        return cls._line_to_constraint(slope, intercept)
+
+    @classmethod
+    def _get_parabola_tangent_constr(cls, x: torch.Tensor) -> torch.Tensor:
         slope = 2 * x
         intercept = -(x ** 2) - 0.5
-        return slope, intercept
+        return cls._line_to_constraint(slope, intercept)
 
-    @staticmethod
-    def _get_sigmoid_tangent(x: torch.Tensor) -> torch.Tensor:
+    @classmethod
+    def _get_sigmoid_tangent_constr(cls, x: torch.Tensor) -> torch.Tensor:
         sigmoid = 1 / (1 + torch.exp(-x))
         slope = -sigmoid * (1 - sigmoid)
         intercept = -sigmoid - slope * x
-        return slope, intercept
+        return cls._line_to_constraint(slope, intercept)
 
     def _analyze_spu(self, layer: SPU) -> None:
         """Analyze the SPU layer."""
@@ -124,27 +143,17 @@ class Verifier:
         self._upper_bound.append(torch.maximum(upper_y, lower_y))
         self._lower_bound.append(torch.minimum(upper_y, lower_y))
 
-        joining_slope = (upper_y - lower_y) / (upper_x - lower_x)
-        joining_intercept = upper_y - joining_slope * upper_x
-        joining_constraint = torch.cat(
-            [joining_slope.diag(), joining_intercept.unsqueeze(1)], dim=1
+        joining_constraint = self._get_joining_line_constr(
+            lower_x, lower_y, upper_x, upper_y
         )
 
         # lower_bound > 0
         case_right_mask = (lower_x > 0).unsqueeze(1)
-        parabola_slope, parabola_intercept = self._get_parabola_tangent(
-            lower_x
-        )
-        parabola_constraint = torch.cat(
-            [parabola_slope.diag(), parabola_intercept.unsqueeze(1)], dim=1
-        )
+        parabola_constraint = self._get_parabola_tangent_constr(lower_x)
 
         # upper_bound < 0
         case_left_mask = (upper_x <= 0).unsqueeze(1)
-        sigmoid_slope, sigmoid_intercept = self._get_sigmoid_tangent(lower_x)
-        sigmoid_constraint = torch.cat(
-            [sigmoid_slope.diag(), sigmoid_intercept.unsqueeze(1)], dim=1
-        )
+        sigmoid_constraint = self._get_sigmoid_tangent_constr(lower_x)
 
         # Crossing case
         crossing_mask = ~case_left_mask & ~case_right_mask
@@ -159,7 +168,9 @@ class Verifier:
         # Set upper constraint based on whether upper bound is below tangent
         # at lower bound or above
         sigmoid_tangent_value = (
-            sigmoid_slope * upper_x + sigmoid_intercept - upper_y
+            sigmoid_constraint.diagonal() * upper_x
+            + sigmoid_constraint[:, -1]
+            - upper_y
         )
         crossing_lesser_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
         # If u is less than intersection point, set upper constraint as
