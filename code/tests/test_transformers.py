@@ -14,6 +14,11 @@ NUM_TEST_POINTS: Final = 1000
 @pytest.mark.parametrize(
     "lower_bound, upper_bound",
     [
+        # Simple aka non-crossing case
+        (np.array([-5.0]), np.array([-1e-4])),
+        (np.array([1e-4]), np.array([1e2])),
+        (np.array([-5.0, 1e-4]), np.array([-1e-4, 1e2])),
+        # Crossing case
         (np.array([-1e-4]), np.array([1e2])),
         (np.array([-5.0]), np.array([1e-4])),
         (np.array([-5.0, -1e-4]), np.array([1e-4, 1e2])),
