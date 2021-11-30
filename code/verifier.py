@@ -30,8 +30,8 @@ class Verifier:
         # Remove the singleton batch and channel axes
         inputs = inputs.flatten()
 
-        self._upper_bound = [inputs + eps]
-        self._lower_bound = [inputs - eps]
+        self._upper_bound = [torch.clamp(inputs + eps, max=1.0)]
+        self._lower_bound = [torch.clamp(inputs - eps, min=0.0)]
 
         # Constraints must be of the shape:
         # [curr_layer_neurons, prev_layer_neurons + 1]
