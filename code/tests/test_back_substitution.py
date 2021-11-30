@@ -125,7 +125,7 @@ def test_back_substitution(
         expected_lower_bound: pytorch.Tensor object,
             1D vector of size C
     """
-    net = FullyConnected(DEVICE, 784, [10])
+    net = FullyConnected(DEVICE, 28, [10])
     verifier = Verifier(net)
 
     verifier._upper_constraint = upper_constraint
