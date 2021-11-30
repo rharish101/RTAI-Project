@@ -31,7 +31,7 @@ def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
         lower_bound: A 1D vector of input lower bounds
         upper_bound: A 1D vector of corresponding input upper bounds
     """
-    net = FullyConnected(DEVICE, 784, [10])
+    net = FullyConnected(DEVICE, 28, [10])
     layer = SPU()
     verifier = Verifier(net)
 
