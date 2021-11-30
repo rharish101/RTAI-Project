@@ -158,12 +158,21 @@ class Verifier:
         # Crossing case
         crossing_mask = ~case_left_mask & ~case_right_mask
 
-        # Set lower constraint as the line y = -0.5
+        # Set lower constraint as either the line y = -0.5 or the line joining
+        # the lower bound and the lowest point
         num_neurons = len(upper_x)
         lowest_point_constraint = torch.zeros(
             (num_neurons, num_neurons + 1), device=DEVICE
         )
         lowest_point_constraint[:, -1] = -0.5
+        lowest_joining_constraint = self._get_joining_line_constr(
+            lower_x, lower_y, 0, -0.5
+        )
+        lowest_joining_mask = (lower_x.abs() > upper_x).unsqueeze(1)
+        crossing_lower_constraint = (
+            lowest_joining_mask * lowest_joining_constraint
+            + ~lowest_joining_mask * lowest_point_constraint
+        )
 
         # Set upper constraint based on whether upper bound is below tangent
         # at lower bound or above
@@ -188,7 +197,7 @@ class Verifier:
         self._lower_constraint.append(
             case_right_mask * parabola_constraint
             + case_left_mask * joining_constraint
-            + crossing_mask * lowest_point_constraint
+            + crossing_mask * crossing_lower_constraint
         )
 
     def _back_substitute(self) -> None:
