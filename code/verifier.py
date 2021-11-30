@@ -163,7 +163,7 @@ class Verifier:
 
         # upper_bound < 0
         case_left_mask = (upper_x <= 0).unsqueeze(1)
-        sigmoid_constraint = self._get_sigmoid_tangent_constr(lower_x)
+        sigmoid_constraint_mid = self._get_sigmoid_tangent_constr(mid_x)
 
         # Crossing case
         crossing_mask = ~case_left_mask & ~case_right_mask
@@ -186,22 +186,23 @@ class Verifier:
 
         # Set upper constraint based on whether upper bound is below tangent
         # at lower bound or above
+        sigmoid_constraint_lower = self._get_sigmoid_tangent_constr(lower_x)
         sigmoid_tangent_value = (
-            sigmoid_constraint.diagonal() * upper_x
-            + sigmoid_constraint[:, -1]
+            sigmoid_constraint_lower.diagonal() * upper_x
+            + sigmoid_constraint_lower[:, -1]
             - upper_y
         )
         crossing_lesser_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
         # If u is less than intersection point, set upper constraint as
         # the tangent to the sigmoid part, else the joining line
         crossing_upper_constraint = (
-            crossing_lesser_mask * sigmoid_constraint
+            crossing_lesser_mask * sigmoid_constraint_lower
             + ~crossing_lesser_mask * joining_constraint
         )
 
         self._upper_constraint.append(
             case_right_mask * joining_constraint
-            + case_left_mask * sigmoid_constraint
+            + case_left_mask * sigmoid_constraint_mid
             + crossing_mask * crossing_upper_constraint
         )
         self._lower_constraint.append(
