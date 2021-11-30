@@ -24,7 +24,7 @@ NUM_TEST_POINTS: Final = 1000
         (np.array([-5.0, -1e-4]), np.array([1e-4, 1e2])),
     ],
 )
-def test_spu(lower_bound, upper_bound) -> None:
+def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
     """Test the SPU transformer.
 
     Args:
