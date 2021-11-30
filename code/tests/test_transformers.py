@@ -35,8 +35,8 @@ def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
     layer = SPU()
     verifier = Verifier(net)
 
-    verifier._upper_bound = [torch.from_numpy(upper_bound)]
-    verifier._lower_bound = [torch.from_numpy(lower_bound)]
+    verifier._upper_bound = [torch.from_numpy(upper_bound).to(DEVICE)]
+    verifier._lower_bound = [torch.from_numpy(lower_bound).to(DEVICE)]
 
     # No need to use previous constraint values, so keep them empty
     verifier._upper_constraint = []
@@ -45,7 +45,7 @@ def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
     verifier._analyze_spu(layer)
 
     inputs_np = np.linspace(lower_bound, upper_bound, num=NUM_TEST_POINTS)
-    inputs = torch.from_numpy(inputs_np)  # dim: NUM_TEST_POINTS x D
+    inputs = torch.from_numpy(inputs_np).to(DEVICE)  # dim: NUM_TEST_POINTS x D
     outputs = layer(inputs)  # dim: NUM_TEST_POINTS x D
 
     # To compensate for floating-point precision
