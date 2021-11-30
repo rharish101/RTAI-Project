@@ -146,6 +146,7 @@ class Verifier:
         """Analyze the SPU layer."""
         upper_x = self._upper_bound[-1]
         lower_x = self._lower_bound[-1]
+        mid_x = (upper_x + lower_x) / 2
         upper_y = layer(upper_x)
         lower_y = layer(lower_x)
 
@@ -158,7 +159,7 @@ class Verifier:
 
         # lower_bound > 0
         case_right_mask = (lower_x > 0).unsqueeze(1)
-        parabola_constraint = self._get_parabola_tangent_constr(lower_x)
+        parabola_constraint = self._get_parabola_tangent_constr(mid_x)
 
         # upper_bound < 0
         case_left_mask = (upper_x <= 0).unsqueeze(1)
