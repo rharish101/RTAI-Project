@@ -6,7 +6,6 @@
   - Norm - Vandit
   - Back-substitution - Martin
 * Back-substitution for outputs - Harish
-* Use float64 - Harish
 
 ## Future
 * Binary search for best SPU crossing upper bound

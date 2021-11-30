@@ -1,5 +1,6 @@
 """Code to verify feed-forward MNIST networks."""
 import argparse
+from typing import Optional
 
 import torch
 from networks import SPU, FullyConnected, Normalization
@@ -12,9 +13,12 @@ INPUT_SIZE: Final = 28
 class Verifier:
     """Class that analyzes a network."""
 
-    def __init__(self, net: FullyConnected):
+    def __init__(
+        self, net: FullyConnected, dtype: Optional[torch.dtype] = torch.float64
+    ):
         """Store the network."""
         self.net = net.to(DEVICE)
+        self.dtype = next(self.net.parameters()) if dtype is None else dtype
 
     def analyze(self, inputs: torch.Tensor, true_lbl: int, eps: float) -> bool:
         """Analyze the given input.
@@ -28,7 +32,7 @@ class Verifier:
             Whether the network is verified to be correct for the given region
         """
         # Remove the singleton batch and channel axes
-        inputs = inputs.flatten()
+        inputs = inputs.flatten().type(self.dtype)
 
         self._upper_bound = [torch.clamp(inputs + eps, max=1.0)]
         self._lower_bound = [torch.clamp(inputs - eps, min=0.0)]
@@ -64,37 +68,43 @@ class Verifier:
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
-        constraint = torch.cat([layer.weight, layer.bias.unsqueeze(-1)], dim=1)
+        weight = layer.weight.type(self.dtype)
+        bias = layer.bias.type(self.dtype)
+
+        constraint = torch.cat([weight, bias.unsqueeze(-1)], dim=1)
+
         self._upper_constraint.append(constraint)
         self._lower_constraint.append(constraint)
 
         bounds_for_upper = torch.where(
-            layer.weight > 0,
+            weight > 0,
             self._upper_bound[-1].unsqueeze(0),
             self._lower_bound[-1].unsqueeze(0),
         )
         bounds_for_lower = torch.where(
-            layer.weight > 0,
+            weight > 0,
             self._lower_bound[-1].unsqueeze(0),
             self._upper_bound[-1].unsqueeze(0),
         )
         self._upper_bound.append(
-            torch.sum(bounds_for_upper * layer.weight, 1) + layer.bias
+            torch.sum(bounds_for_upper * weight, 1) + bias
         )
         self._lower_bound.append(
-            torch.sum(bounds_for_lower * layer.weight, 1) + layer.bias
+            torch.sum(bounds_for_lower * weight, 1) + bias
         )
 
     def _analyze_norm(self, layer: Normalization) -> None:
         """Analyze the normalization layer."""
-        mean = layer.mean.squeeze()
-        std_dev = layer.sigma.squeeze()
+        mean = layer.mean.squeeze().type(self.dtype)
+        std_dev = layer.sigma.squeeze().type(self.dtype)
 
         num_neurons = len(self._upper_bound[-1])
         self._upper_bound.append((self._upper_bound[-1] - mean) / std_dev)
         self._lower_bound.append((self._lower_bound[-1] - mean) / std_dev)
 
-        constraint = torch.eye(num_neurons, num_neurons + 1, device=DEVICE)
+        constraint = torch.eye(
+            num_neurons, num_neurons + 1, device=DEVICE, dtype=self.dtype
+        )
         constraint[:, -1] = -mean
         constraint /= std_dev
 
@@ -162,7 +172,7 @@ class Verifier:
         # the lower bound and the lowest point
         num_neurons = len(upper_x)
         lowest_point_constraint = torch.zeros(
-            (num_neurons, num_neurons + 1), device=DEVICE
+            (num_neurons, num_neurons + 1), device=DEVICE, dtype=self.dtype
         )
         lowest_point_constraint[:, -1] = -0.5
         lowest_joining_constraint = self._get_joining_line_constr(
