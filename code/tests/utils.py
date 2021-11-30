@@ -5,3 +5,5 @@ import torch
 DTYPE = torch.float64
 # Used when comparing floats in tests
 EPS = torch.finfo(DTYPE).eps
+# Seed for any RNGs
+SEED = 0
