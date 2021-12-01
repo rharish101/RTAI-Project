@@ -15,6 +15,10 @@ INVALID_COLOUR=244 # grey
 # Taken from: https://stackoverflow.com/a/69648792/7905483
 colourise () { echo -ne "\e[38;5;${1}m${2}\e[0m"; }
 
+correct=0 # true positives + true negatives
+unsound=0 # false positives
+imprecise=0 # false negatives
+
 while IFS=, read net spec expected; do
     echo -n "$net @ $spec: "
     prediction=$( \
@@ -25,10 +29,13 @@ while IFS=, read net spec expected; do
 
     if [[ "$prediction" == $expected ]]; then
         colour=$CORRECT_COLOUR
+        ((correct+=1))
     elif [[ "$prediction" == verified ]]; then
         colour=$UNSOUND_COLOUR
+        ((unsound+=1))
     elif [[ "$prediction" == 'not verified' ]]; then
         colour=$IMPRECISE_COLOUR
+        ((imprecise+=1))
     else
         colourise $INVALID_COLOUR "$prediction"
         echo
@@ -38,3 +45,15 @@ while IFS=, read net spec expected; do
     colourise $colour "$prediction"
     echo
 done < "$TEST_CASES_DIR/gt.txt"
+
+cat << EOS
+
+=======
+Summary
+=======
+
+Total: $((correct + unsound + imprecise))
+Correct: $(colourise $CORRECT_COLOUR $correct)
+Unsound: $(colourise $UNSOUND_COLOUR $unsound)
+Imprecise: $(colourise $IMPRECISE_COLOUR $imprecise)
+EOS
