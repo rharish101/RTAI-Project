@@ -69,8 +69,9 @@ class Verifier:
         # positive
         return (self._lower_bound[-1] > 0).all()
 
-    @staticmethod
-    def _get_output_layer(num_classes: int, true_lbl: int) -> torch.nn.Linear:
+    def _get_output_layer(
+        self, num_classes: int, true_lbl: int
+    ) -> torch.nn.Linear:
         """Get the output layer that captures the verification task.
 
         This returns a custom affine layer that captures `y_true - y_other` for
@@ -90,7 +91,7 @@ class Verifier:
                 true_lbl:, true_lbl + 1 :
             ].fill_diagonal_(-1)
 
-        return verification_layer.to(DEVICE)
+        return verification_layer.to(self.device)
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
