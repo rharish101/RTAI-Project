@@ -146,6 +146,7 @@ class Verifier:
         """Analyze the SPU layer."""
         upper_x = self._upper_bound[-1]
         lower_x = self._lower_bound[-1]
+        mid_x = (upper_x + lower_x) / 2
         upper_y = layer(upper_x)
         lower_y = layer(lower_x)
 
@@ -158,11 +159,11 @@ class Verifier:
 
         # lower_bound > 0
         case_right_mask = (lower_x > 0).unsqueeze(1)
-        parabola_constraint = self._get_parabola_tangent_constr(lower_x)
+        parabola_constraint = self._get_parabola_tangent_constr(mid_x)
 
         # upper_bound < 0
         case_left_mask = (upper_x <= 0).unsqueeze(1)
-        sigmoid_constraint = self._get_sigmoid_tangent_constr(lower_x)
+        sigmoid_constraint_mid = self._get_sigmoid_tangent_constr(mid_x)
 
         # Crossing case
         crossing_mask = ~case_left_mask & ~case_right_mask
@@ -185,22 +186,23 @@ class Verifier:
 
         # Set upper constraint based on whether upper bound is below tangent
         # at lower bound or above
+        sigmoid_constraint_lower = self._get_sigmoid_tangent_constr(lower_x)
         sigmoid_tangent_value = (
-            sigmoid_constraint.diagonal() * upper_x
-            + sigmoid_constraint[:, -1]
+            sigmoid_constraint_lower.diagonal() * upper_x
+            + sigmoid_constraint_lower[:, -1]
             - upper_y
         )
         crossing_lesser_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
         # If u is less than intersection point, set upper constraint as
         # the tangent to the sigmoid part, else the joining line
         crossing_upper_constraint = (
-            crossing_lesser_mask * sigmoid_constraint
+            crossing_lesser_mask * sigmoid_constraint_lower
             + ~crossing_lesser_mask * joining_constraint
         )
 
         self._upper_constraint.append(
             case_right_mask * joining_constraint
-            + case_left_mask * sigmoid_constraint
+            + case_left_mask * sigmoid_constraint_mid
             + crossing_mask * crossing_upper_constraint
         )
         self._lower_constraint.append(
