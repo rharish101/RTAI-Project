@@ -83,9 +83,12 @@ class Verifier:
 
         # The i^th row should correspond to the equation `y = x_true - x_i` if
         # i < true_lbl, else `y = x_true - x_{i+1}`
-        verification_layer.weight[:, true_lbl] = 1
-        verification_layer.weight[:true_lbl, :true_lbl].fill_diagonal_(-1)
-        verification_layer.weight[true_lbl:, true_lbl + 1 :].fill_diagonal_(-1)
+        with torch.inference_mode():
+            verification_layer.weight[:, true_lbl] = 1
+            verification_layer.weight[:true_lbl, :true_lbl].fill_diagonal_(-1)
+            verification_layer.weight[
+                true_lbl:, true_lbl + 1 :
+            ].fill_diagonal_(-1)
 
         return verification_layer.to(DEVICE)
 
