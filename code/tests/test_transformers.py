@@ -3,13 +3,12 @@ import numpy as np
 import pytest
 import torch
 from networks import SPU, FullyConnected
-from typing_extensions import Final
 from utils import DTYPE, EPS
 from verifier import DEVICE, Verifier
 
 # How many evenly-distributed points to consider b/w upper and lower bounds for
 # testing transformers
-NUM_TEST_POINTS: Final = 1000
+NUM_TEST_POINTS = 1000
 
 
 @pytest.mark.parametrize(
