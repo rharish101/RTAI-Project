@@ -15,14 +15,14 @@ def test_device_support(device: str) -> None:
     if device == "cuda" and not torch.cuda.is_available():
         pytest.skip("No CUDA support on this machine")
 
-    # Add a hidden layer to test the SPU activation
-    net = FullyConnected(device, 28, [5, 10])
-    verifier = Verifier(net, device=device)
-
-    # Keep inputs on CPU to see if verifier automatically moves them to the GPU
+    # Keep network and inputs on the CPU to see if verifier automatically moves
+    # them to the GPU.
+    # Add a hidden layer to test the SPU activation.
+    net = FullyConnected("cpu", 28, [5, 10])
     rng = torch.Generator(device="cpu").manual_seed(SEED)
     inputs = torch.rand(784, generator=rng, device="cpu")
     true_lbl = torch.randint(10, [], generator=rng, device="cpu")
     eps = torch.rand([], generator=rng, device="cpu")
 
+    verifier = Verifier(net, device=device)
     verifier.analyze(inputs, true_lbl, eps)
