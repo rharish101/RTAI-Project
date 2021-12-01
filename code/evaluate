@@ -15,19 +15,37 @@ INVALID_COLOUR=244 # grey
 # Taken from: https://stackoverflow.com/a/69648792/7905483
 colourise () { echo -ne "\e[38;5;${1}m${2}\e[0m"; }
 
+# Convert nanoseconds to seconds
+ns_to_s () { printf "%.3f" $(echo "$1 / 1000000000" | bc -l); }
+
 max_score=0 # total number of verified examples
 verified=0 # true positives
 unverified=0 # true negatives
 unsound=0 # false positives
 imprecise=0 # false negatives
 
+min_time= # least time taken by a test
+max_time=0 # most time taken by a test
+total_time=0 # total time taken by all tests
+
 while IFS=, read net spec expected; do
     echo -n "$net @ $spec: "
+    start_time=$(date +"%s%N")
     prediction=$( \
         python verifier.py \
         --net $net \
         --spec "$TEST_CASES_DIR/$net/$spec" \
     )
+    end_time=$(date +"%s%N")
+    curr_time=$((end_time - start_time))
+
+    ((total_time+=$curr_time))
+    if [ -z "$min_time" ] || (( curr_time < min_time )); then
+        min_time=$curr_time
+    fi
+    if (( curr_time > max_time )); then
+        max_time=$curr_time
+    fi
 
     if [[ "$prediction" == $expected ]]; then
         colour=$CORRECT_COLOUR
@@ -43,8 +61,7 @@ while IFS=, read net spec expected; do
         colour=$IMPRECISE_COLOUR
         ((imprecise+=1))
     else
-        colourise $INVALID_COLOUR "$prediction"
-        echo
+        echo "$(colourise $INVALID_COLOUR "$prediction") - $(ns_to_s $curr_time)s"
         exit 1
     fi
 
@@ -52,20 +69,25 @@ while IFS=, read net spec expected; do
         ((max_score+=1))
     fi
 
-    colourise $colour "$prediction"
-    echo
+    echo "$(colourise $colour "$prediction") - $(ns_to_s $curr_time)s"
 done < "$TEST_CASES_DIR/gt.txt"
 
+total_tests=$((verified + unverified + unsound + imprecise))
 cat << EOS
 
 =======
 Summary
 =======
 
-Total: $((verified + unverified + unsound + imprecise))
+Total tests: $total_tests
 Correct: $(colourise $CORRECT_COLOUR $((verified + unverified)))
 Unsound: $(colourise $UNSOUND_COLOUR $unsound)
 Imprecise: $(colourise $IMPRECISE_COLOUR $imprecise)
 
 Score: $((verified - 2 * unsound))/$max_score
+
+Minimum test time: $(ns_to_s $min_time)s
+Maximum test time: $(ns_to_s $max_time)s
+Average test time: $(ns_to_s $((total_time / total_tests)))s
+Total test time: $(ns_to_s $total_time)s
 EOS
