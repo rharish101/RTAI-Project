@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 for net in fc1 fc2 fc3 fc4 fc5
