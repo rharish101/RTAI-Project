@@ -4,7 +4,6 @@
 * Unit tests:
   - Affine - Vandit
   - Norm - Vandit
-  - Back-substitution - Martin
 
 ## Future
 * Binary search for best SPU crossing upper bound
