@@ -6,9 +6,35 @@ set -e
 
 TEST_CASES_DIR="../test_cases"
 
+CORRECT_COLOUR=046 # green
+UNSOUND_COLOUR=196 # red
+IMPRECISE_COLOUR=214 # orange-ish yellow
+INVALID_COLOUR=244 # grey
+
+# Arg 1 is the colour code, and arg 2 is the text to be coloured
+# Taken from: https://stackoverflow.com/a/69648792/7905483
+colourise () { echo -ne "\e[38;5;${1}m${2}\e[0m"; }
+
 while IFS=, read net spec expected; do
     echo -n "$net @ $spec: "
-    python verifier.py \
+    prediction=$( \
+        python verifier.py \
         --net $net \
-        --spec "$TEST_CASES_DIR/$net/$spec"
+        --spec "$TEST_CASES_DIR/$net/$spec" \
+    )
+
+    if [[ "$prediction" == $expected ]]; then
+        colour=$CORRECT_COLOUR
+    elif [[ "$prediction" == verified ]]; then
+        colour=$UNSOUND_COLOUR
+    elif [[ "$prediction" == 'not verified' ]]; then
+        colour=$IMPRECISE_COLOUR
+    else
+        colourise $INVALID_COLOUR "$prediction"
+        echo
+        exit 1
+    fi
+
+    colourise $colour "$prediction"
+    echo
 done < "$TEST_CASES_DIR/gt.txt"
