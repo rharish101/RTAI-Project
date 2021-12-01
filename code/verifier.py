@@ -46,7 +46,10 @@ class Verifier:
         self._upper_constraint = [self._upper_bound[0].unsqueeze(-1)]
         self._lower_constraint = [self._lower_bound[0].unsqueeze(-1)]
 
-        for layer in self.net.layers:
+        num_classes = self.net.layers[-1].out_features
+        verification_layer = self._get_output_layer(num_classes, true_lbl)
+
+        for layer in list(self.net.layers) + [verification_layer]:
             if isinstance(layer, torch.nn.Linear):
                 self._analyze_affine(layer)
             elif isinstance(layer, Normalization):
@@ -62,12 +65,29 @@ class Verifier:
 
             self._back_substitute()
 
-        lower_bound_true_lbl = self._lower_bound[-1][true_lbl]
-        false_lbls = [
-            i for i in range(len(self._upper_bound[-1])) if i != true_lbl
-        ]
-        upper_bound_others = self._upper_bound[-1][false_lbls].amax()
-        return lower_bound_true_lbl > upper_bound_others
+        # The lower bound of `y_true - y_other` for all `other` labels must be
+        # positive
+        return (self._lower_bound[-1] > 0).all()
+
+    @staticmethod
+    def _get_output_layer(num_classes: int, true_lbl: int) -> torch.nn.Linear:
+        """Get the output layer that captures the verification task.
+
+        This returns a custom affine layer that captures `y_true - y_other` for
+        each `other` label. This way, back-substitution should automatically
+        be done for the output.
+        """
+        verification_layer = torch.nn.Linear(num_classes, num_classes - 1)
+        torch.nn.init.zeros_(verification_layer.bias)
+        torch.nn.init.zeros_(verification_layer.weight)
+
+        # The i^th row should correspond to the equation `y = x_true - x_i` if
+        # i < true_lbl, else `y = x_true - x_{i+1}`
+        verification_layer.weight[:, true_lbl] = 1
+        verification_layer.weight[:true_lbl, :true_lbl].fill_diagonal_(-1)
+        verification_layer.weight[true_lbl:, true_lbl + 1 :].fill_diagonal_(-1)
+
+        return verification_layer.to(DEVICE)
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
