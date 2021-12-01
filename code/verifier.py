@@ -1,6 +1,6 @@
 """Code to verify feed-forward MNIST networks."""
 import argparse
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 from networks import SPU, FullyConnected, Normalization
@@ -13,10 +13,14 @@ class Verifier:
     """Class that analyzes a network."""
 
     def __init__(
-        self, net: FullyConnected, dtype: Optional[torch.dtype] = torch.float64
+        self,
+        net: FullyConnected,
+        device: Union[str, torch.device] = DEVICE,
+        dtype: Optional[torch.dtype] = torch.float64,
     ):
         """Store the network."""
-        self.net = net.to(DEVICE)
+        self.net = net.to(device)
+        self.device = device
         self.dtype = next(self.net.parameters()) if dtype is None else dtype
 
     def analyze(self, inputs: torch.Tensor, true_lbl: int, eps: float) -> bool:
@@ -31,7 +35,7 @@ class Verifier:
             Whether the network is verified to be correct for the given region
         """
         # Remove the singleton batch and channel axes
-        inputs = inputs.flatten().type(self.dtype)
+        inputs = inputs.flatten().type(self.dtype).to(self.device)
 
         self._upper_bound = [torch.clamp(inputs + eps, max=1.0)]
         self._lower_bound = [torch.clamp(inputs - eps, min=0.0)]
@@ -102,7 +106,7 @@ class Verifier:
         self._lower_bound.append((self._lower_bound[-1] - mean) / std_dev)
 
         constraint = torch.eye(
-            num_neurons, num_neurons + 1, device=DEVICE, dtype=self.dtype
+            num_neurons, num_neurons + 1, device=self.device, dtype=self.dtype
         )
         constraint[:, -1] = -mean
         constraint /= std_dev
@@ -172,7 +176,9 @@ class Verifier:
         # the lower bound and the lowest point
         num_neurons = len(upper_x)
         lowest_point_constraint = torch.zeros(
-            (num_neurons, num_neurons + 1), device=DEVICE, dtype=self.dtype
+            (num_neurons, num_neurons + 1),
+            device=self.device,
+            dtype=self.dtype,
         )
         lowest_point_constraint[:, -1] = -0.5
         lowest_joining_constraint = self._get_joining_line_constr(
