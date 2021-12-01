@@ -5,6 +5,6 @@ from typing_extensions import Final
 # For better precision
 DTYPE: Final = torch.float64
 # Used when comparing floats in tests
-EPS: Final = torch.finfo(DTYPE).eps
+EPS: Final = 1e-10
 # Seed for any RNGs
 SEED: Final = 0
