@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Exit after the first error. This way, a keyboard interrupt for one verifier
+# process will prevent others from running as well.
 set -e
 for net in fc1 fc2 fc3 fc4 fc5
 do
