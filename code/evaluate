@@ -3,14 +3,12 @@
 # Exit after the first error. This way, a keyboard interrupt for one verifier
 # process will prevent others from running as well.
 set -e
-for net in fc1 fc2 fc3 fc4 fc5
-do
-	for k in 0 1;
-	do
-		echo Evaluating network net${k}_${net}
-		for spec in `ls ../test_cases/net${k}_${net}`
-		do
-			python verifier.py --net net${k}_${net} --spec ../test_cases/net${k}_${net}/${spec}
-		done
-	done
-done
+
+TEST_CASES_DIR="../test_cases"
+
+while IFS=, read net spec expected; do
+    echo -n "$net @ $spec: "
+    python verifier.py \
+        --net $net \
+        --spec "$TEST_CASES_DIR/$net/$spec"
+done < "$TEST_CASES_DIR/gt.txt"
