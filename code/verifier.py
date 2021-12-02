@@ -130,18 +130,12 @@ class Verifier:
         mean = layer.mean.squeeze().type(self.dtype)
         std_dev = layer.sigma.squeeze().type(self.dtype)
 
-        num_neurons = len(self._upper_bound[-1])
-        self._upper_bound.append((self._upper_bound[-1] - mean) / std_dev)
-        self._lower_bound.append((self._lower_bound[-1] - mean) / std_dev)
+        self._upper_bound[-1] = (self._upper_bound[-1] - mean) / std_dev
+        self._lower_bound[-1] = (self._lower_bound[-1] - mean) / std_dev
 
-        constraint = torch.eye(
-            num_neurons, num_neurons + 1, device=self.device, dtype=self.dtype
-        )
-        constraint[:, -1] = -mean
-        constraint /= std_dev
-
-        self._upper_constraint.append(constraint)
-        self._lower_constraint.append(constraint)
+        for constraints in self._upper_constraint, self._lower_constraint:
+            constraints[-1][:, -1] -= mean
+            constraints[-1] /= std_dev
 
     @staticmethod
     def _line_to_constraint(
