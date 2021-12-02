@@ -16,7 +16,7 @@ class Verifier:
         self,
         net: FullyConnected,
         device: Union[str, torch.device] = DEVICE,
-        dtype: Optional[torch.dtype] = torch.float64,
+        dtype: Optional[torch.dtype] = torch.float32,
     ):
         """Store the network."""
         self.net = net.to(device)
