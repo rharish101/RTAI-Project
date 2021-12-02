@@ -4,7 +4,7 @@
 # process will prevent others from running as well.
 set -e
 
-TEST_CASES_DIR="../test_cases"
+TEST_CASES_DIRS=("../test_cases" "../prelim_test_cases")
 
 CORRECT_COLOUR=046 # green
 UNSOUND_COLOUR=196 # red
@@ -28,49 +28,51 @@ min_time= # least time taken by a test
 max_time=0 # most time taken by a test
 total_time=0 # total time taken by all tests
 
-while IFS=, read net spec expected; do
-    echo -n "$net @ $spec: "
-    start_time=$(date +"%s%N")
-    prediction=$( \
-        python verifier.py \
-        --net $net \
-        --spec "$TEST_CASES_DIR/$net/$spec" \
-    )
-    end_time=$(date +"%s%N")
-    curr_time=$((end_time - start_time))
+for test_dir in "${TEST_CASES_DIRS[@]}"; do
+    while IFS=, read net spec expected; do
+        echo -n "$net @ $spec: "
+        start_time=$(date +"%s%N")
+        prediction=$( \
+            python verifier.py \
+            --net $net \
+            --spec "$test_dir/$net/$spec" \
+        )
+        end_time=$(date +"%s%N")
+        curr_time=$((end_time - start_time))
 
-    ((total_time+=$curr_time))
-    if [ -z "$min_time" ] || (( curr_time < min_time )); then
-        min_time=$curr_time
-    fi
-    if (( curr_time > max_time )); then
-        max_time=$curr_time
-    fi
-
-    if [[ "$prediction" == $expected ]]; then
-        colour=$CORRECT_COLOUR
-        if [[ $expected == verified ]]; then
-            ((verified+=1))
-        else
-            ((unverified+=1))
+        ((total_time+=$curr_time))
+        if [ -z "$min_time" ] || (( curr_time < min_time )); then
+            min_time=$curr_time
         fi
-    elif [[ "$prediction" == verified ]]; then
-        colour=$UNSOUND_COLOUR
-        ((unsound+=1))
-    elif [[ "$prediction" == 'not verified' ]]; then
-        colour=$IMPRECISE_COLOUR
-        ((imprecise+=1))
-    else
-        echo "$(colourise $INVALID_COLOUR "$prediction") - $(ns_to_s $curr_time)s"
-        exit 1
-    fi
+        if (( curr_time > max_time )); then
+            max_time=$curr_time
+        fi
 
-    if [[ $expected == verified ]]; then
-        ((max_score+=1))
-    fi
+        if [[ "$prediction" == $expected ]]; then
+            colour=$CORRECT_COLOUR
+            if [[ $expected == verified ]]; then
+                ((verified+=1))
+            else
+                ((unverified+=1))
+            fi
+        elif [[ "$prediction" == verified ]]; then
+            colour=$UNSOUND_COLOUR
+            ((unsound+=1))
+        elif [[ "$prediction" == 'not verified' ]]; then
+            colour=$IMPRECISE_COLOUR
+            ((imprecise+=1))
+        else
+            echo "$(colourise $INVALID_COLOUR "$prediction") - $(ns_to_s $curr_time)s"
+            exit 1
+        fi
 
-    echo "$(colourise $colour "$prediction") - $(ns_to_s $curr_time)s"
-done < "$TEST_CASES_DIR/gt.txt"
+        if [[ $expected == verified ]]; then
+            ((max_score+=1))
+        fi
+
+        echo "$(colourise $colour "$prediction") - $(ns_to_s $curr_time)s"
+    done < "$test_dir/gt.txt"
+done
 
 total_tests=$((verified + unverified + unsound + imprecise))
 cat << EOS
