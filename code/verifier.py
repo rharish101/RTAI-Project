@@ -21,6 +21,7 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
     """Class that analyzes a network using DeepPoly."""
 
     BINARY_ITER: Final = 10
+    SIGMOID_SCALE: Final = 5  # replace [-inf, inf] with this
 
     def __init__(self, layers: Iterable[torch.nn.Module]):
         """Store the network."""
@@ -208,7 +209,7 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
         crossing_lower_mask = (lower_x.abs() > upper_x).type(lower_x.dtype)
         crossing_lower_pos = self._get_param(
             f"crossing_lower_pos/{layer_idx}",
-            torch.log(crossing_lower_mask / (1 - crossing_lower_mask)),
+            (crossing_lower_mask - 0.5) * 2 * self.SIGMOID_SCALE,
         )
         crossing_lower_pos = (
             torch.sigmoid(crossing_lower_pos) * (lower_y + 0.5) - 0.5
@@ -229,7 +230,7 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
         L = self._get_binary_search_point(lower_x, upper_x, upper_y)
         sigmoid_crossing_pos = self._get_param(
             f"sigmoid_crossing_pos/{layer_idx}",
-            torch.ones_like(lower_x) * float("-inf"),
+            torch.ones_like(lower_x) * -self.SIGMOID_SCALE,
         )
         sigmoid_crossing_pos = (
             torch.sigmoid(sigmoid_crossing_pos) * (L - lower_x) + lower_x
