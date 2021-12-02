@@ -60,6 +60,9 @@ class Verifier:
                 self._analyze_affine(layer)
             elif isinstance(layer, Normalization):
                 self._analyze_norm(layer)
+                # No need for back-substitution, since this directly changes
+                # the previous constraints & bounds
+                continue
             elif isinstance(layer, SPU):
                 self._analyze_spu(layer)
             elif isinstance(layer, torch.nn.Flatten):
