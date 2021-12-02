@@ -222,12 +222,12 @@ class Verifier:
             + sigmoid_constraint_lower[:, -1]
             - upper_y
         )
-        crossing_lesser_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
+        crossing_upper_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
         # If u is less than intersection point, set upper constraint as
         # the tangent to the sigmoid part, else the joining line
         crossing_upper_constraint = (
-            crossing_lesser_mask * sigmoid_constraint_lower
-            + ~crossing_lesser_mask * joining_constraint
+            crossing_upper_mask * sigmoid_constraint_lower
+            + ~crossing_upper_mask * joining_constraint
         )
 
         self._upper_constraint.append(
