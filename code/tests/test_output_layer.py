@@ -1,9 +1,8 @@
 """Tests for the custom output layer that captures the verification task."""
 import pytest
 import torch
-from networks import FullyConnected
 from utils import DTYPE, EPS
-from verifier import DEVICE, Verifier
+from verifier import DEVICE, _get_output_layer
 
 
 @pytest.mark.parametrize(
@@ -12,11 +11,9 @@ from verifier import DEVICE, Verifier
 )
 def test_output_layer(num_classes: int, true_lbl: int) -> None:
     """Test the custom verification affine layer's weight and bias."""
-    net = FullyConnected(DEVICE, 28, [10])
-    verifier = Verifier(net, device=DEVICE, dtype=DTYPE)
-
-    with torch.inference_mode():
-        layer = verifier._get_output_layer(num_classes, true_lbl)
+    layer = _get_output_layer(num_classes, true_lbl).to(
+        device=DEVICE, dtype=DTYPE
+    )
 
     curr_row_idx = 0
 

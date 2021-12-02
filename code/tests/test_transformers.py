@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 import torch
-from networks import SPU, FullyConnected
+from networks import SPU
 from typing_extensions import Final
 from utils import DTYPE, EPS
 from verifier import DEVICE, Verifier
@@ -32,9 +32,8 @@ def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
         lower_bound: A 1D vector of input lower bounds
         upper_bound: A 1D vector of corresponding input upper bounds
     """
-    net = FullyConnected(DEVICE, 28, [10])
     layer = SPU()
-    verifier = Verifier(net, device=DEVICE, dtype=DTYPE)
+    verifier = Verifier([layer]).to(device=DEVICE, dtype=DTYPE)
 
     verifier._upper_bound = [
         torch.from_numpy(upper_bound).to(device=DEVICE, dtype=DTYPE)

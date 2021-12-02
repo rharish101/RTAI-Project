@@ -1,50 +1,41 @@
 """Code to verify feed-forward MNIST networks."""
 import argparse
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
 import torch
 from networks import SPU, FullyConnected, Normalization
 from typing_extensions import Final
 
 DEVICE: Final = "cpu"
+DTYPE: Final = torch.float32
 INPUT_SIZE: Final = 28
 
+# Optimization constants
+STEPS: Final = 50
+LR: Final = 2e-2
+MOMENTUM: Final = 0.9
+NESTEROV: Final = True
 
-class Verifier:
-    """Class that analyzes a network."""
+
+class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
+    """Class that analyzes a network using DeepPoly."""
 
     BINARY_ITER: Final = 10
 
-    def __init__(
-        self,
-        net: FullyConnected,
-        device: Union[str, torch.device] = DEVICE,
-        dtype: Optional[torch.dtype] = torch.float32,
-    ):
+    def __init__(self, layers: Iterable[torch.nn.Module]):
         """Store the network."""
-        self.net = net.to(device)
-        self.device = device
+        super().__init__()
+        self.layers = layers
+        self.params = torch.nn.ParameterDict()
 
-        if dtype is None:
-            self.dtype = next(self.net.parameters())
-        else:
-            self.dtype = dtype
-            self.net = self.net.to(dtype)
+    def _get_param(self, name: str, value: torch.Tensor) -> torch.nn.Parameter:
+        """Get the requested param, creating it if it doesn't exist."""
+        if name not in self.params:
+            self.params[name] = torch.nn.Parameter(value)
+        return self.params[name]
 
-    def analyze(self, inputs: torch.Tensor, true_lbl: int, eps: float) -> bool:
-        """Analyze the given input.
-
-        Args:
-            inputs: The 2D inputs to the model corresponding to one image
-            true_label: The corresponding true label
-            eps: The size of the L∞ norm ball around the inputs
-
-        Returns:
-            Whether the network is verified to be correct for the given region
-        """
-        # Remove the singleton batch and channel axes
-        inputs = inputs.flatten().to(device=self.device, dtype=self.dtype)
-
+    def forward(self, inputs: torch.Tensor, eps: float) -> torch.Tensor:
+        """Do an analysis forward propagation."""
         self._upper_bound = [torch.clamp(inputs + eps, max=1.0)]
         self._lower_bound = [torch.clamp(inputs - eps, min=0.0)]
 
@@ -54,10 +45,7 @@ class Verifier:
         self._upper_constraint = [self._upper_bound[0].unsqueeze(-1)]
         self._lower_constraint = [self._lower_bound[0].unsqueeze(-1)]
 
-        num_classes = self.net.layers[-1].out_features
-        verification_layer = self._get_output_layer(num_classes, true_lbl)
-
-        for layer in list(self.net.layers) + [verification_layer]:
+        for layer in self.layers:
             if isinstance(layer, torch.nn.Linear):
                 self._analyze_affine(layer)
             elif isinstance(layer, Normalization):
@@ -78,36 +66,12 @@ class Verifier:
 
         # The lower bound of `y_true - y_other` for all `other` labels must be
         # positive
-        return (self._lower_bound[-1] > 0).all()
-
-    def _get_output_layer(
-        self, num_classes: int, true_lbl: int
-    ) -> torch.nn.Linear:
-        """Get the output layer that captures the verification task.
-
-        This returns a custom affine layer that captures `y_true - y_other` for
-        each `other` label. This way, back-substitution should automatically
-        be done for the output.
-        """
-        verification_layer = torch.nn.Linear(num_classes, num_classes - 1)
-        torch.nn.init.zeros_(verification_layer.bias)
-        torch.nn.init.zeros_(verification_layer.weight)
-
-        # The i^th row should correspond to the equation `y = x_true - x_i` if
-        # i < true_lbl, else `y = x_true - x_{i+1}`
-        with torch.inference_mode():
-            verification_layer.weight[:, true_lbl] = 1
-            verification_layer.weight[:true_lbl, :true_lbl].fill_diagonal_(-1)
-            verification_layer.weight[
-                true_lbl:, true_lbl + 1 :
-            ].fill_diagonal_(-1)
-
-        return verification_layer.to(device=self.device, dtype=self.dtype)
+        return self._lower_bound[-1].min()
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
-        weight = layer.weight.type(self.dtype)
-        bias = layer.bias.type(self.dtype)
+        weight = layer.weight
+        bias = layer.bias
 
         constraint = torch.cat([weight, bias.unsqueeze(-1)], dim=1)
         self._upper_constraint.append(constraint)
@@ -132,8 +96,8 @@ class Verifier:
 
     def _analyze_norm(self, layer: Normalization) -> None:
         """Analyze the normalization layer."""
-        mean = layer.mean.squeeze().type(self.dtype)
-        std_dev = layer.sigma.squeeze().type(self.dtype)
+        mean = layer.mean.squeeze()
+        std_dev = layer.sigma.squeeze()
 
         self._upper_bound[-1] = (self._upper_bound[-1] - mean) / std_dev
         self._lower_bound[-1] = (self._lower_bound[-1] - mean) / std_dev
@@ -204,9 +168,10 @@ class Verifier:
         """Analyze the SPU layer."""
         upper_x = self._upper_bound[-1]
         lower_x = self._lower_bound[-1]
-        mid_x = (upper_x + lower_x) / 2
         upper_y = layer(upper_x)
         lower_y = layer(lower_x)
+
+        layer_idx = len(self._upper_bound)
 
         self._upper_bound.append(torch.maximum(upper_y, lower_y))
         self._lower_bound.append(torch.minimum(upper_y, lower_y))
@@ -217,31 +182,39 @@ class Verifier:
 
         # lower_bound > 0
         case_right_mask = (lower_x > 0).unsqueeze(1)
-        parabola_constraint = self._get_parabola_tangent_constr(mid_x)
+        parabola_pos = self._get_param(
+            f"parabola_pos/{layer_idx}", torch.zeros_like(upper_x)
+        )
+        parabola_pos = (
+            torch.sigmoid(parabola_pos) * (upper_x - lower_x) + lower_x
+        )
+        parabola_constraint = self._get_parabola_tangent_constr(parabola_pos)
 
         # upper_bound < 0
         case_left_mask = (upper_x <= 0).unsqueeze(1)
-        sigmoid_constraint_mid = self._get_sigmoid_tangent_constr(mid_x)
+        sigmoid_pos = self._get_param(
+            f"sigmoid_pos/{layer_idx}", torch.zeros_like(upper_x)
+        )
+        sigmoid_pos = (
+            torch.sigmoid(sigmoid_pos) * (upper_x - lower_x) + lower_x
+        )
+        sigmoid_constraint_mid = self._get_sigmoid_tangent_constr(sigmoid_pos)
 
         # Crossing case
         crossing_mask = ~case_left_mask & ~case_right_mask
 
         # Set lower constraint as either the line y = -0.5 or the line joining
         # the lower bound and the lowest point
-        num_neurons = len(upper_x)
-        lowest_point_constraint = torch.zeros(
-            (num_neurons, num_neurons + 1),
-            device=self.device,
-            dtype=self.dtype,
+        crossing_lower_mask = (lower_x.abs() > upper_x).type(lower_x.dtype)
+        crossing_lower_pos = self._get_param(
+            f"crossing_lower_pos/{layer_idx}",
+            torch.log(crossing_lower_mask / (1 - crossing_lower_mask)),
         )
-        lowest_point_constraint[:, -1] = -0.5
-        lowest_joining_constraint = self._get_joining_line_constr(
-            lower_x, lower_y, 0, -0.5
+        crossing_lower_pos = (
+            torch.sigmoid(crossing_lower_pos) * (lower_y + 0.5) - 0.5
         )
-        crossing_lower_constraint = torch.where(
-            (lower_x.abs() > upper_x).unsqueeze(1),
-            lowest_joining_constraint,
-            lowest_point_constraint,
+        crossing_lower_constraint = self._get_joining_line_constr(
+            lower_x, crossing_lower_pos, 0, -0.5
         )
 
         # Set upper constraint based on whether upper bound is below tangent
@@ -254,7 +227,16 @@ class Verifier:
         )
 
         L = self._get_binary_search_point(lower_x, upper_x, upper_y)
-        sigmoid_constraint_crossing = self._get_sigmoid_tangent_constr(L)
+        sigmoid_crossing_pos = self._get_param(
+            f"sigmoid_crossing_pos/{layer_idx}",
+            torch.ones_like(lower_x) * float("-inf"),
+        )
+        sigmoid_crossing_pos = (
+            torch.sigmoid(sigmoid_crossing_pos) * (L - lower_x) + lower_x
+        )
+        sigmoid_constraint_crossing = self._get_sigmoid_tangent_constr(
+            sigmoid_crossing_pos
+        )
 
         # If u is less than intersection point, set upper constraint as
         # the tangent to the sigmoid part, else the joining line
@@ -315,13 +297,81 @@ class Verifier:
         )
 
 
-def analyze(
-    net: FullyConnected, inputs: torch.Tensor, eps: float, true_label: int
-) -> bool:
-    """Analyze the network for the given input."""
+def _get_output_layer(num_classes: int, true_lbl: int) -> torch.nn.Linear:
+    """Get the output layer that captures the verification task.
+
+    This returns a custom affine layer that captures `y_true - y_other` for
+    each `other` label. This way, back-substitution should automatically
+    be done for the output.
+    """
+    verification_layer = torch.nn.Linear(num_classes, num_classes - 1)
+    torch.nn.init.zeros_(verification_layer.bias)
+    torch.nn.init.zeros_(verification_layer.weight)
+
+    # The i^th row should correspond to the equation `y = x_true - x_i` if
+    # i < true_lbl, else `y = x_true - x_{i+1}`
     with torch.inference_mode():
-        verifier = Verifier(net)
-        return verifier.analyze(inputs, true_label, eps)
+        verification_layer.weight[:, true_lbl] = 1
+        verification_layer.weight[:true_lbl, :true_lbl].fill_diagonal_(-1)
+        verification_layer.weight[true_lbl:, true_lbl + 1 :].fill_diagonal_(-1)
+
+    # Ensure that this layer isn't accidently trained
+    for param in verification_layer.parameters():
+        param.requires_grad = False
+
+    return verification_layer
+
+
+def analyze(
+    net: FullyConnected,
+    inputs: torch.Tensor,
+    eps: float,
+    true_label: int,
+    device: Union[str, torch.device] = DEVICE,
+) -> bool:
+    """Analyze the network for the given input.
+
+    This optimizes the verifier's parameters using SGD to improve precision.
+    """
+    # Remove the singleton batch and channel axes
+    inputs = inputs.flatten().to(device=device, dtype=DTYPE)
+
+    net = net.to(device=device, dtype=DTYPE)
+    # Make the network un-trainable
+    for param in net.parameters():
+        param.requires_grad = False
+
+    num_classes = net.layers[-1].out_features
+    verification_layer = _get_output_layer(num_classes, true_label).to(
+        device=device, dtype=DTYPE
+    )
+    verifier = Verifier(list(net.layers) + [verification_layer])
+    verifier = verifier.to(device=device, dtype=DTYPE)
+
+    best_objective = float("-inf")
+    optim: Optional[torch.optim.Optimizer] = None
+
+    for _ in range(STEPS):
+        objective = verifier(inputs, eps)
+        best_objective = max(objective, best_objective)
+        if objective > 0:
+            return True
+
+        if optim is None:
+            optim = torch.optim.SGD(
+                verifier.parameters(),
+                lr=LR,
+                momentum=MOMENTUM,
+                nesterov=NESTEROV,
+            )
+
+        optim.zero_grad(set_to_none=True)
+        # We have to increase the objective, but PyTorch decreases the loss
+        (-objective).backward()
+        optim.step()
+
+    best_objective = max(best_objective, verifier(inputs, eps))
+    return best_objective > 0
 
 
 def main() -> None:
