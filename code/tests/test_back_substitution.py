@@ -2,6 +2,7 @@
 import pytest
 import torch
 from networks import FullyConnected
+from utils import DTYPE, EPS
 from verifier import DEVICE, Verifier
 
 
@@ -126,15 +127,31 @@ def test_back_substitution(
             1D vector of size C
     """
     net = FullyConnected(DEVICE, 28, [10])
-    verifier = Verifier(net)
+    verifier = Verifier(net, device=DEVICE, dtype=DTYPE)
 
-    verifier._upper_constraint = upper_constraint
-    verifier._lower_constraint = lower_constraint
+    verifier._upper_constraint = [
+        i.to(device=DEVICE, dtype=DTYPE) for i in upper_constraint
+    ]
+    verifier._lower_constraint = [
+        i.to(device=DEVICE, dtype=DTYPE) for i in lower_constraint
+    ]
 
-    verifier._upper_bound = upper_bound
-    verifier._lower_bound = lower_bound
+    verifier._upper_bound = [
+        i.to(device=DEVICE, dtype=DTYPE) for i in upper_bound
+    ]
+    verifier._lower_bound = [
+        i.to(device=DEVICE, dtype=DTYPE) for i in lower_bound
+    ]
 
     verifier._back_substitute()
 
-    assert torch.allclose(verifier._upper_bound[-1], expected_upper_bound)
-    assert torch.allclose(verifier._lower_bound[-1], expected_lower_bound)
+    assert torch.allclose(
+        verifier._upper_bound[-1],
+        expected_upper_bound.to(device=DEVICE, dtype=DTYPE),
+        atol=EPS,
+    )
+    assert torch.allclose(
+        verifier._lower_bound[-1],
+        expected_lower_bound.to(device=DEVICE, dtype=DTYPE),
+        atol=EPS,
+    )

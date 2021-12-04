@@ -2,7 +2,7 @@
 import pytest
 import torch
 from networks import FullyConnected
-from utils import DTYPE
+from utils import DTYPE, EPS
 from verifier import DEVICE, Verifier
 
 
@@ -13,7 +13,7 @@ from verifier import DEVICE, Verifier
 def test_output_layer(num_classes: int, true_lbl: int) -> None:
     """Test the custom verification affine layer's weight and bias."""
     net = FullyConnected(DEVICE, 28, [10])
-    verifier = Verifier(net, dtype=DTYPE)
+    verifier = Verifier(net, device=DEVICE, dtype=DTYPE)
 
     with torch.inference_mode():
         layer = verifier._get_output_layer(num_classes, true_lbl)
@@ -25,8 +25,20 @@ def test_output_layer(num_classes: int, true_lbl: int) -> None:
             continue
 
         # Equation should be: y = x_true - x_other
-        assert layer.weight[curr_row_idx, true_lbl] == 1
-        assert layer.weight[curr_row_idx, other_idx] == -1
-        assert layer.bias[curr_row_idx] == 0
+        assert torch.allclose(
+            layer.weight[curr_row_idx, true_lbl],
+            torch.ones([], device=DEVICE, dtype=DTYPE),
+            atol=EPS,
+        )
+        assert torch.allclose(
+            layer.weight[curr_row_idx, other_idx],
+            -torch.ones([], device=DEVICE, dtype=DTYPE),
+            atol=EPS,
+        )
+        assert torch.allclose(
+            layer.bias[curr_row_idx],
+            torch.zeros([], device=DEVICE, dtype=DTYPE),
+            atol=EPS,
+        )
 
         curr_row_idx += 1

@@ -21,7 +21,12 @@ class Verifier:
         """Store the network."""
         self.net = net.to(device)
         self.device = device
-        self.dtype = next(self.net.parameters()) if dtype is None else dtype
+
+        if dtype is None:
+            self.dtype = next(self.net.parameters())
+        else:
+            self.dtype = dtype
+            self.net = self.net.to(dtype)
 
     def analyze(self, inputs: torch.Tensor, true_lbl: int, eps: float) -> bool:
         """Analyze the given input.
@@ -35,7 +40,7 @@ class Verifier:
             Whether the network is verified to be correct for the given region
         """
         # Remove the singleton batch and channel axes
-        inputs = inputs.flatten().type(self.dtype).to(self.device)
+        inputs = inputs.flatten().to(device=self.device, dtype=self.dtype)
 
         self._upper_bound = [torch.clamp(inputs + eps, max=1.0)]
         self._lower_bound = [torch.clamp(inputs - eps, min=0.0)]
@@ -91,7 +96,7 @@ class Verifier:
                 true_lbl:, true_lbl + 1 :
             ].fill_diagonal_(-1)
 
-        return verification_layer.to(self.device)
+        return verification_layer.to(device=self.device, dtype=self.dtype)
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""

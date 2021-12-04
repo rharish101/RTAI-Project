@@ -33,13 +33,13 @@ def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
     """
     net = FullyConnected(DEVICE, 28, [10])
     layer = SPU()
-    verifier = Verifier(net, dtype=DTYPE)
+    verifier = Verifier(net, device=DEVICE, dtype=DTYPE)
 
     verifier._upper_bound = [
-        torch.from_numpy(upper_bound).to(DEVICE).type(DTYPE)
+        torch.from_numpy(upper_bound).to(device=DEVICE, dtype=DTYPE)
     ]
     verifier._lower_bound = [
-        torch.from_numpy(lower_bound).to(DEVICE).type(DTYPE)
+        torch.from_numpy(lower_bound).to(device=DEVICE, dtype=DTYPE)
     ]
 
     # No need to use previous constraint values, so keep them empty
@@ -49,7 +49,9 @@ def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
     verifier._analyze_spu(layer)
 
     inputs_np = np.linspace(lower_bound, upper_bound, num=NUM_TEST_POINTS)
-    inputs = torch.from_numpy(inputs_np).to(DEVICE)  # dim: NUM_TEST_POINTS x D
+    inputs = torch.from_numpy(inputs_np).to(
+        device=DEVICE, dtype=DTYPE
+    )  # dim: NUM_TEST_POINTS x D
     outputs = layer(inputs)  # dim: NUM_TEST_POINTS x D
 
     # Test bounds
@@ -59,7 +61,7 @@ def test_spu(lower_bound: np.ndarray, upper_bound: np.ndarray) -> None:
     assert (outputs <= spu_upper_bound.unsqueeze(0) + EPS).all()
 
     inputs_with_bias = torch.cat(
-        [inputs, torch.ones(len(inputs), 1, device=DEVICE)], dim=1
+        [inputs, torch.ones(len(inputs), 1, device=DEVICE, dtype=DTYPE)], dim=1
     )  # NUM_TEST_POINTS x (D+1)
 
     # NUM_TEST_POINTS x D = NUM_TEST_POINTS x (D+1) @ (D+1) x D
