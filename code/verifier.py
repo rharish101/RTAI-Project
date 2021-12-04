@@ -118,10 +118,10 @@ class Verifier:
             self._upper_bound[-1].unsqueeze(0),
         )
         self._upper_bound.append(
-            torch.sum(bounds_for_upper * weight, 1) + bias
+            torch.einsum("ij,ij->i", bounds_for_upper, weight) + bias
         )
         self._lower_bound.append(
-            torch.sum(bounds_for_lower * weight, 1) + bias
+            torch.einsum("ij,ij->i", bounds_for_lower, weight) + bias
         )
 
     def _analyze_norm(self, layer: Normalization) -> None:
@@ -259,8 +259,8 @@ class Verifier:
                 prev_upper_constr.unsqueeze(0),  # 1xBx(A+1)
                 prev_lower_constr.unsqueeze(0),  # 1xBx(A+1)
             )  # CxBx(A+1)
-            x = torch.sum(
-                x * curr_upper_constr[:, :-1].unsqueeze(-1), dim=1
+            x = torch.einsum(
+                "ijk,ij->ik", x, curr_upper_constr[:, :-1]
             )  # Cx(A+1)
             x[:, -1] += curr_upper_constr[:, -1]
 
@@ -269,8 +269,8 @@ class Verifier:
                 prev_lower_constr.unsqueeze(0),  # 1xBx(A+1)
                 prev_upper_constr.unsqueeze(0),  # 1xBx(A+1)
             )  # CxBx(A+1)
-            y = torch.sum(
-                y * curr_lower_constr[:, :-1].unsqueeze(-1), dim=1
+            y = torch.einsum(
+                "ijk,ij->ik", y, curr_lower_constr[:, :-1]
             )  # Cx(A+1)
             y[:, -1] += curr_lower_constr[:, -1]
 
