@@ -99,7 +99,6 @@ class Verifier:
         bias = layer.bias.type(self.dtype)
 
         constraint = torch.cat([weight, bias.unsqueeze(-1)], dim=1)
-
         self._upper_constraint.append(constraint)
         self._lower_constraint.append(constraint)
 
