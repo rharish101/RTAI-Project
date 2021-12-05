@@ -1,9 +1,10 @@
 """Common utilities and constants for tests."""
 import torch
+from typing_extensions import Final
 
 # For better precision
-DTYPE = torch.float64
+DTYPE: Final = torch.float64
 # Used when comparing floats in tests
-EPS = torch.finfo(DTYPE).eps
+EPS: Final = torch.finfo(DTYPE).eps
 # Seed for any RNGs
-SEED = 0
+SEED: Final = 0

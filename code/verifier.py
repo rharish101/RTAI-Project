@@ -4,9 +4,10 @@ from typing import Optional, Union
 
 import torch
 from networks import SPU, FullyConnected, Normalization
+from typing_extensions import Final
 
-DEVICE = "cpu"
-INPUT_SIZE = 28
+DEVICE: Final = "cpu"
+INPUT_SIZE: Final = 28
 
 
 class Verifier:
