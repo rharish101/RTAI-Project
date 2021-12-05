@@ -170,7 +170,7 @@ class Verifier:
 
     @classmethod
     def _get_sigmoid_tangent_constr(cls, x: torch.Tensor) -> torch.Tensor:
-        sigmoid = 1 / (1 + torch.exp(-x))
+        sigmoid = torch.sigmoid(x)
         slope = -sigmoid * (1 - sigmoid)
         intercept = -sigmoid - slope * x
         return cls._line_to_constraint(slope, intercept)
