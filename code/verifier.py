@@ -12,9 +12,8 @@ INPUT_SIZE: Final = 28
 
 # Optimization constants
 STEPS: Final = 50
-LR: Final = 2e-2
-MOMENTUM: Final = 0.9
-NESTEROV: Final = True
+LR: Final = 0.1
+ALPHA: Final = 0.999
 
 
 class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
@@ -359,17 +358,20 @@ def analyze(
             return True
 
         if optim is None:
-            optim = torch.optim.SGD(
+            optim = torch.optim.RMSprop(
                 verifier.parameters(),
                 lr=LR,
-                momentum=MOMENTUM,
-                nesterov=NESTEROV,
+                alpha=ALPHA,
+            )
+            sched = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optim, T_max=STEPS
             )
 
         optim.zero_grad(set_to_none=True)
         # We have to increase the objective, but PyTorch decreases the loss
         (-objective).backward()
         optim.step()
+        sched.step()
 
     best_objective = max(best_objective, verifier(inputs, eps))
     return best_objective > 0
