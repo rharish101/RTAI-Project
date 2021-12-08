@@ -2,7 +2,7 @@
 
 # Exit after the first error. This way, a keyboard interrupt for one verifier
 # process will prevent others from running as well.
-set -e
+set -eE
 
 TEST_CASES_DIRS=("../test_cases" "../prelim_test_cases")
 
@@ -28,53 +28,65 @@ min_time= # least time taken by a test
 max_time=0 # most time taken by a test
 total_time=0 # total time taken by all tests
 
-for test_dir in "${TEST_CASES_DIRS[@]}"; do
-    while IFS=, read net spec expected; do
-        echo -n "$net @ $spec: "
-        start_time=$(date +"%s%N")
-        prediction=$( \
-            python verifier.py \
-            --net $net \
-            --spec "$test_dir/$net/$spec" \
-        )
-        end_time=$(date +"%s%N")
-        curr_time=$((end_time - start_time))
+test ()
+{
+    for test_dir in "${TEST_CASES_DIRS[@]}"; do
+        while IFS=, read net spec expected; do
+            echo -n "$net @ $spec: "
+            start_time=$(date +"%s%N")
+            prediction=$( \
+                python verifier.py \
+                --net $net \
+                --spec "$test_dir/$net/$spec" \
+            )
+            end_time=$(date +"%s%N")
+            curr_time=$((end_time - start_time))
 
-        ((total_time+=$curr_time))
-        if [ -z "$min_time" ] || (( curr_time < min_time )); then
-            min_time=$curr_time
-        fi
-        if (( curr_time > max_time )); then
-            max_time=$curr_time
-        fi
-
-        if [[ "$prediction" == $expected ]]; then
-            colour=$CORRECT_COLOUR
-            if [[ $expected == verified ]]; then
-                ((verified+=1))
-            else
-                ((unverified+=1))
+            ((total_time+=$curr_time))
+            if [ -z "$min_time" ] || (( curr_time < min_time )); then
+                min_time=$curr_time
             fi
-        elif [[ "$prediction" == verified ]]; then
-            colour=$UNSOUND_COLOUR
-            ((unsound+=1))
-        elif [[ "$prediction" == 'not verified' ]]; then
-            colour=$IMPRECISE_COLOUR
-            ((imprecise+=1))
-        else
-            echo "$(colourise $INVALID_COLOUR "$prediction") - $(ns_to_s $curr_time)s"
-            exit 1
-        fi
+            if (( curr_time > max_time )); then
+                max_time=$curr_time
+            fi
 
-        if [[ $expected == verified ]]; then
-            ((max_score+=1))
-        fi
+            if [[ "$prediction" == $expected ]]; then
+                colour=$CORRECT_COLOUR
+                if [[ $expected == verified ]]; then
+                    ((verified+=1))
+                else
+                    ((unverified+=1))
+                fi
+            elif [[ "$prediction" == verified ]]; then
+                colour=$UNSOUND_COLOUR
+                ((unsound+=1))
+            elif [[ "$prediction" == 'not verified' ]]; then
+                colour=$IMPRECISE_COLOUR
+                ((imprecise+=1))
+            else
+                echo "$(colourise $INVALID_COLOUR "$prediction") - $(ns_to_s $curr_time)s"
+                return 1
+            fi
 
-        echo "$(colourise $colour "$prediction") - $(ns_to_s $curr_time)s"
-    done < "$test_dir/gt.txt"
-done
+            if [[ $expected == verified ]]; then
+                ((max_score+=1))
+            fi
+
+            echo "$(colourise $colour "$prediction") - $(ns_to_s $curr_time)s"
+        done < "$test_dir/gt.txt"
+    done
+}
+
+# Exit testing after the first error. This way, a keyboard interrupt for one
+# verifier process will prevent others from running as well.
+trap 'return 0' SIGINT
+test
+trap - SIGINT
 
 total_tests=$((verified + unverified + unsound + imprecise))
+
+# Only print summary if at least one test was completed
+if (( total_tests > 0 )); then
 cat << EOS
 
 =======
@@ -93,3 +105,4 @@ Maximum test time: $(ns_to_s $max_time)s
 Average test time: $(ns_to_s $((total_time / total_tests)))s
 Total test time: $(ns_to_s $total_time)s
 EOS
+fi
