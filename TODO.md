@@ -8,7 +8,6 @@
   - Binary search - Vandit
   - SGD - Martin
 * Optimize tangent locations by back-prop:
-  - Make it faster - Harish
   - Benchmark running times on Euler - Harish
 
 ## Future
