@@ -4,12 +4,11 @@
 * Unit tests:
   - Affine - Vandit
   - Norm - Vandit
-* Find point on sigmoid where tangent intersects SPU crossing upper bound:
-  - Binary search - Vandit
-  - SGD - Martin
+* Find point on sigmoid where tangent intersects SPU crossing upper bound with binary search - Vandit
+* Get point at which tangent from parabola intersects x=lower\_x - Martin
 * Optimize tangent locations by back-prop:
-  - Benchmark running times on Euler - Harish
+  - Rebase on master after merging crossing sigmoid tangent bound - Harish
+  - Incorporate new bound for SPU crossing lower constraint - Harish
 
 ## Future
-* Use trainable parameters for the crossing upper bound
 * PGD for generating test cases
