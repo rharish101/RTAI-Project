@@ -1,5 +1,6 @@
 """Code to verify feed-forward MNIST networks."""
 import argparse
+import logging
 from typing import Iterable, Optional, Union
 
 import torch
@@ -353,6 +354,7 @@ def analyze(
 
     for _ in range(STEPS):
         objective = verifier(inputs, eps)
+        logging.debug(f"Objective: {objective:.4f}")
         best_objective = max(objective, best_objective)
         if objective > 0:
             return True
@@ -391,7 +393,17 @@ def main() -> None:
     parser.add_argument(
         "--spec", type=str, required=True, help="Test case to verify."
     )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Whether to print additional debug info.",
+    )
     args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
 
     with open(args.spec, "r") as f:
         lines = [line[:-1] for line in f.readlines()]
