@@ -4,6 +4,7 @@
 * Unit tests:
   - Affine - Vandit
   - Norm - Vandit
+  - Binary search - Vandit
 * Get point at which tangent from parabola intersects x=lower\_x - Martin
 * Optimize tangent locations by back-prop:
   - Rebase on master after merging crossing sigmoid tangent bound - Harish
