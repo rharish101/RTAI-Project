@@ -13,7 +13,7 @@ INVALID_COLOUR=244 # grey
 
 # Arg 1 is the colour code, and arg 2 is the text to be coloured
 # Taken from: https://stackoverflow.com/a/69648792/7905483
-colourise () { echo -ne "\e[38;5;${1}m${2}\e[0m"; }
+colourise () { echo -ne "\033[38;5;${1}m${2}\033[0m"; }
 
 # Convert nanoseconds to seconds
 ns_to_s () { printf "%.3f" $(echo "$1 / 1000000000" | bc -l); }
