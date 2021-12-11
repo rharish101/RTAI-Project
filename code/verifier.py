@@ -195,8 +195,8 @@ class Verifier:
             # If the intersection point of tangent at m with line x = upper_x
             # is above upper_y, set L as the mid point and do not change R
             # else set R as the mid point and do not change L
-            L = binary_search_mask * m + ~binary_search_mask * L
-            R = binary_search_mask * R + ~binary_search_mask * m
+            L = torch.where(binary_search_mask, m, L)
+            R = torch.where(binary_search_mask, R, m)
 
         return L
 
@@ -238,10 +238,10 @@ class Verifier:
         lowest_joining_constraint = self._get_joining_line_constr(
             lower_x, lower_y, 0, -0.5
         )
-        lowest_joining_mask = (lower_x.abs() > upper_x).unsqueeze(1)
-        crossing_lower_constraint = (
-            lowest_joining_mask * lowest_joining_constraint
-            + ~lowest_joining_mask * lowest_point_constraint
+        crossing_lower_constraint = torch.where(
+            (lower_x.abs() > upper_x).unsqueeze(1),
+            lowest_joining_constraint,
+            lowest_point_constraint,
         )
 
         # Set upper constraint based on whether upper bound is below tangent
@@ -252,16 +252,16 @@ class Verifier:
             + sigmoid_constraint_lower[:, -1]
             - upper_y
         )
-        crossing_upper_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
 
         L = self._get_binary_search_point(lower_x, upper_x, upper_y)
         sigmoid_constraint_crossing = self._get_sigmoid_tangent_constr(L)
 
         # If u is less than intersection point, set upper constraint as
         # the tangent to the sigmoid part, else the joining line
-        crossing_upper_constraint = (
-            crossing_upper_mask * sigmoid_constraint_crossing
-            + ~crossing_upper_mask * joining_constraint
+        crossing_upper_constraint = torch.where(
+            (sigmoid_tangent_value > 0).unsqueeze(1),
+            sigmoid_constraint_crossing,
+            joining_constraint,
         )
 
         self._upper_constraint.append(
