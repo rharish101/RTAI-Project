@@ -4,7 +4,6 @@
 * Unit tests:
   - Affine - Vandit
   - Norm - Vandit
-* Find point on sigmoid where tangent intersects SPU crossing upper bound with binary search - Vandit
 * Get point at which tangent from parabola intersects x=lower\_x - Martin
 * Optimize tangent locations by back-prop:
   - Rebase on master after merging crossing sigmoid tangent bound - Harish
