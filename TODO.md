@@ -5,10 +5,9 @@
   - Affine - Vandit
   - Norm - Vandit
   - Binary search - Vandit
+* Optimize tangent locations by back-prop - Harish
 * Get point at which tangent from parabola intersects x=lower\_x - Martin
-* Optimize tangent locations by back-prop:
-  - Rebase on master after merging crossing sigmoid tangent bound - Harish
-  - Incorporate new bound for SPU crossing lower constraint - Harish
+* Market research - find out about other groups' progress - Everyone
 
 ## Future
 * PGD for generating test cases
