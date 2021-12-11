@@ -13,6 +13,8 @@ INPUT_SIZE: Final = 28
 class Verifier:
     """Class that analyzes a network."""
 
+    BINARY_ITER: Final = 10
+
     def __init__(
         self,
         net: FullyConnected,
@@ -172,6 +174,32 @@ class Verifier:
         intercept = -sigmoid - slope * x
         return cls._line_to_constraint(slope, intercept)
 
+    @classmethod
+    def _get_binary_search_point(
+        cls,
+        lower_x: torch.Tensor,
+        upper_x: torch.Tensor,
+        upper_y: torch.Tensor,
+    ) -> torch.Tensor:
+        L = lower_x
+        R = torch.zeros_like(lower_x)
+        for _ in range(0, cls.BINARY_ITER):
+            m = (L + R) / 2
+            sigmoid_constraint_mid = cls._get_sigmoid_tangent_constr(m)
+            sigmoid_tangent_value = (
+                sigmoid_constraint_mid.diagonal() * upper_x
+                + sigmoid_constraint_mid[:, -1]
+                - upper_y
+            )
+            binary_search_mask = sigmoid_tangent_value > 0
+            # If the intersection point of tangent at m with line x = upper_x
+            # is above upper_y, set L as the mid point and do not change R
+            # else set R as the mid point and do not change L
+            L = binary_search_mask * m + ~binary_search_mask * L
+            R = binary_search_mask * R + ~binary_search_mask * m
+
+        return L
+
     def _analyze_spu(self, layer: SPU) -> None:
         """Analyze the SPU layer."""
         upper_x = self._upper_bound[-1]
@@ -218,7 +246,8 @@ class Verifier:
 
         # Set upper constraint based on whether upper bound is below tangent
         # at lower bound or above
-        sigmoid_constraint_lower = self._get_sigmoid_tangent_constr(lower_x)
+        L = self._get_binary_search_point(lower_x, upper_x, upper_y)
+        sigmoid_constraint_lower = self._get_sigmoid_tangent_constr(L)
         sigmoid_tangent_value = (
             sigmoid_constraint_lower.diagonal() * upper_x
             + sigmoid_constraint_lower[:, -1]
