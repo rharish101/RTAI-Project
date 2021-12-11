@@ -246,18 +246,21 @@ class Verifier:
 
         # Set upper constraint based on whether upper bound is below tangent
         # at lower bound or above
-        L = self._get_binary_search_point(lower_x, upper_x, upper_y)
-        sigmoid_constraint_lower = self._get_sigmoid_tangent_constr(L)
+        sigmoid_constraint_lower = self._get_sigmoid_tangent_constr(lower_x)
         sigmoid_tangent_value = (
             sigmoid_constraint_lower.diagonal() * upper_x
             + sigmoid_constraint_lower[:, -1]
             - upper_y
         )
         crossing_upper_mask = (sigmoid_tangent_value > 0).unsqueeze(1)
+
+        L = self._get_binary_search_point(lower_x, upper_x, upper_y)
+        sigmoid_constraint_crossing = self._get_sigmoid_tangent_constr(L)
+
         # If u is less than intersection point, set upper constraint as
         # the tangent to the sigmoid part, else the joining line
         crossing_upper_constraint = (
-            crossing_upper_mask * sigmoid_constraint_lower
+            crossing_upper_mask * sigmoid_constraint_crossing
             + ~crossing_upper_mask * joining_constraint
         )
 
