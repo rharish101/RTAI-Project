@@ -1,7 +1,6 @@
 """Tests for the back substitution."""
 import pytest
 import torch
-from networks import FullyConnected
 from utils import DTYPE, EPS
 from verifier import DEVICE, Verifier
 
@@ -126,8 +125,7 @@ def test_back_substitution(
         expected_lower_bound: pytorch.Tensor object,
             1D vector of size C
     """
-    net = FullyConnected(DEVICE, 28, [10])
-    verifier = Verifier(net, device=DEVICE, dtype=DTYPE)
+    verifier = Verifier([]).to(device=DEVICE, dtype=DTYPE)
 
     verifier._upper_constraint = [
         i.to(device=DEVICE, dtype=DTYPE) for i in upper_constraint
