@@ -133,6 +133,16 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
         return cls._line_to_constraint(slope, intercept)
 
     @classmethod
+    def _get_parabola_tangent_constr_crossing_a_point(
+        cls, x_1: torch.Tensor, y_1: torch.Tensor
+    ) -> torch.Tensor:
+        """Get a tangent line to the parabola that crosses (x_1, y_1)."""
+        D = 4 * x_1 ** 2 - 4 * y_1 - 2
+        # Clamp to avoid NaN
+        x_2 = (2 * x_1 + D.clamp(min=0.0).sqrt()) / 2
+        return cls._get_parabola_tangent_constr(x_2)
+
+    @classmethod
     def _get_sigmoid_tangent_constr(cls, x: torch.Tensor) -> torch.Tensor:
         sigmoid = torch.sigmoid(x)
         slope = -sigmoid * (1 - sigmoid)
@@ -204,18 +214,39 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
         # Crossing case
         crossing_mask = ~case_left_mask & ~case_right_mask
 
-        # Set lower constraint as either the line y = -0.5 or the line joining
-        # the lower bound and the lowest point
+        # Get the tangent line to the parabola at upper_x
+        parabola_tangent_line_at_upper_x = self._get_parabola_tangent_constr(
+            upper_x
+        )
+        # Get the crossing point of the tangent line and x = lower_x,
+        # use as the lower limit for crossing_lower_pos
+        crossing_lower_pos_limit = (
+            parabola_tangent_line_at_upper_x.diagonal() * lower_x
+            + parabola_tangent_line_at_upper_x[:, -1]
+        )
+
         crossing_lower_mask = (lower_x.abs() > upper_x).type(lower_x.dtype)
         crossing_lower_pos = self._get_param(
             f"crossing_lower_pos/{layer_idx}",
             (crossing_lower_mask - 0.5) * 2 * self.SIGMOID_SCALE,
         )
         crossing_lower_pos = (
-            torch.sigmoid(crossing_lower_pos) * (lower_y + 0.5) - 0.5
+            torch.sigmoid(crossing_lower_pos)
+            * (lower_y - crossing_lower_pos_limit)
+            + crossing_lower_pos_limit
         )
-        crossing_lower_constraint = self._get_joining_line_constr(
-            lower_x, crossing_lower_pos, 0, -0.5
+
+        # If above -0.5 use a joining line,
+        # else use a tangent line to the parabola
+        parabola_tangent_mask = (crossing_lower_pos < -0.5).unsqueeze(1)
+        crossing_lower_constraint = torch.where(
+            parabola_tangent_mask,
+            self._get_parabola_tangent_constr_crossing_a_point(
+                lower_x, crossing_lower_pos
+            ),
+            self._get_joining_line_constr(
+                lower_x, crossing_lower_pos, 0, -0.5
+            ),
         )
 
         # Set upper constraint based on whether upper bound is below tangent
