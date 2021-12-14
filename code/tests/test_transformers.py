@@ -9,7 +9,7 @@ from verifier import DEVICE, Verifier
 
 # How many evenly-distributed points to consider b/w upper and lower bounds for
 # testing transformers
-NUM_TEST_POINTS: Final = 1000
+NUM_TEST_POINTS: Final = int(1e5)
 
 
 @pytest.mark.parametrize(
