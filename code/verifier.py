@@ -185,7 +185,6 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
         layer_idx = len(self._upper_bound)
 
         self._upper_bound.append(torch.maximum(upper_y, lower_y))
-        self._lower_bound.append(torch.minimum(upper_y, lower_y))
 
         joining_constraint = self._get_joining_line_constr(
             lower_x, lower_y, upper_x, upper_y
@@ -213,6 +212,12 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
 
         # Crossing case
         crossing_mask = ~case_left_mask & ~case_right_mask
+        new_lower_bound = torch.where(
+            crossing_mask.squeeze(1),
+            -0.5 * torch.ones_like(upper_y),
+            torch.minimum(upper_y, lower_y),
+        )
+        self._lower_bound.append(new_lower_bound)
 
         # Get the tangent line to the parabola at upper_x
         parabola_tangent_line_at_upper_x = self._get_parabola_tangent_constr(
