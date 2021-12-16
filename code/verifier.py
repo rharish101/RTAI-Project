@@ -390,7 +390,6 @@ def analyze(
 
     for _ in range(STEPS):
         objective = verifier(inputs, eps)
-        logging.debug(f"Objective: {objective:.4f}")
         best_objective = max(objective, best_objective)
         if objective > 0:
             return True
@@ -408,6 +407,11 @@ def analyze(
         optim.zero_grad(set_to_none=True)
         # We have to increase the objective, but PyTorch decreases the loss
         (-objective).backward()
+
+        grad = torch.cat([p.grad.reshape(-1) for p in verifier.parameters()])
+        logging.debug(
+            f"Objective: {objective:.4f}, Gradient norm: {grad.norm():.6f}"
+        )
         optim.step()
         sched.step()
 
