@@ -16,6 +16,10 @@ STEPS: Final = 50
 LR: Final = 0.1
 ALPHA: Final = 0.999
 
+# For gradient noise
+GRAD_NOISE_SCALE: Final = 5e-7
+SEED: Final = 2
+
 
 class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
     """Class that analyzes a network using DeepPoly."""
@@ -387,6 +391,7 @@ def analyze(
 
     best_objective = float("-inf")
     optim: Optional[torch.optim.Optimizer] = None
+    rng = torch.Generator(device=device).manual_seed(SEED)
 
     for _ in range(STEPS):
         objective = verifier(inputs, eps)
@@ -407,6 +412,12 @@ def analyze(
         optim.zero_grad(set_to_none=True)
         # We have to increase the objective, but PyTorch decreases the loss
         (-objective).backward()
+
+        for p in verifier.parameters():
+            noise = torch.rand(
+                p.shape, dtype=p.dtype, device=device, generator=rng
+            )
+            p.grad += noise * GRAD_NOISE_SCALE
 
         grad = torch.cat([p.grad.reshape(-1) for p in verifier.parameters()])
         logging.debug(
