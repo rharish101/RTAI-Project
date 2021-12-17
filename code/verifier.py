@@ -71,7 +71,7 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
 
         # The lower bound of `y_true - y_other` for all `other` labels must be
         # positive
-        return self._lower_bound[-1].min()
+        return self._lower_bound[-1]
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
@@ -394,7 +394,8 @@ def analyze(
     rng = torch.Generator(device=device).manual_seed(SEED)
 
     for _ in range(STEPS):
-        objective = verifier(inputs, eps)
+        outputs = verifier(inputs, eps)
+        objective = outputs.min()
         best_objective = max(objective, best_objective)
         if best_objective > 0:
             return True
@@ -411,8 +412,9 @@ def analyze(
 
         optim.zero_grad(set_to_none=True)
 
-        # Use negative of outputs, since we want gradient ascent, not descent
-        loss = -objective
+        # Use negative of outputs, since we want gradient ascent, not descent.
+        # ReLU ignores all classes that are already verified.
+        loss = torch.nn.functional.relu(-outputs).sum()
         loss.backward()
 
         all_grads = []
@@ -430,7 +432,7 @@ def analyze(
         optim.step()
         sched.step()
 
-    best_objective = max(best_objective, verifier(inputs, eps))
+    best_objective = max(best_objective, verifier(inputs, eps).min())
     return best_objective > 0
 
 
