@@ -396,7 +396,7 @@ def analyze(
     for _ in range(STEPS):
         objective = verifier(inputs, eps)
         best_objective = max(objective, best_objective)
-        if objective > 0:
+        if best_objective > 0:
             return True
 
         if optim is None:
@@ -410,18 +410,22 @@ def analyze(
             )
 
         optim.zero_grad(set_to_none=True)
-        # We have to increase the objective, but PyTorch decreases the loss
-        (-objective).backward()
 
+        # Use negative of outputs, since we want gradient ascent, not descent
+        loss = -objective
+        loss.backward()
+
+        all_grads = []
         for p in verifier.parameters():
             noise = torch.rand(
                 p.shape, dtype=p.dtype, device=device, generator=rng
             )
             p.grad += noise * GRAD_NOISE_SCALE
+            all_grads.append(p.grad.reshape(-1))
 
-        grad = torch.cat([p.grad.reshape(-1) for p in verifier.parameters()])
+        grad_norm = torch.cat(all_grads).norm()
         logging.debug(
-            f"Objective: {objective:.4f}, Gradient norm: {grad.norm():.6f}"
+            f"Objective: {objective:.4f}, Gradient norm: {grad_norm:.6f}"
         )
         optim.step()
         sched.step()
