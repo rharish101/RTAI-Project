@@ -16,6 +16,10 @@ STEPS: Final = 50
 LR: Final = 0.1
 ALPHA: Final = 0.999
 
+# For gradient noise
+GRAD_NOISE_SCALE: Final = 5e-7
+SEED: Final = 2
+
 
 class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
     """Class that analyzes a network using DeepPoly."""
@@ -67,7 +71,7 @@ class Verifier(torch.nn.Module, torch.nn.modules.lazy.LazyModuleMixin):
 
         # The lower bound of `y_true - y_other` for all `other` labels must be
         # positive
-        return self._lower_bound[-1].min()
+        return self._lower_bound[-1]
 
     def _analyze_affine(self, layer: torch.nn.Linear) -> None:
         """Analyze the affine layer."""
@@ -387,12 +391,13 @@ def analyze(
 
     best_objective = float("-inf")
     optim: Optional[torch.optim.Optimizer] = None
+    rng = torch.Generator(device=device).manual_seed(SEED)
 
     for _ in range(STEPS):
-        objective = verifier(inputs, eps)
-        logging.debug(f"Objective: {objective:.4f}")
+        outputs = verifier(inputs, eps)
+        objective = outputs.min()
         best_objective = max(objective, best_objective)
-        if objective > 0:
+        if best_objective > 0:
             return True
 
         if optim is None:
@@ -406,12 +411,29 @@ def analyze(
             )
 
         optim.zero_grad(set_to_none=True)
-        # We have to increase the objective, but PyTorch decreases the loss
-        (-objective).backward()
+
+        # Use negative of outputs, since we want gradient ascent, not descent.
+        # ReLU ignores all classes that are already verified.
+        # Log gives empirically better objectives.
+        loss = torch.nn.functional.relu(-outputs).sum().log()
+        loss.backward()
+
+        all_grads = []
+        for p in verifier.parameters():
+            noise = torch.rand(
+                p.shape, dtype=p.dtype, device=device, generator=rng
+            )
+            p.grad += noise * GRAD_NOISE_SCALE
+            all_grads.append(p.grad.reshape(-1))
+
+        grad_norm = torch.cat(all_grads).norm()
+        logging.debug(
+            f"Objective: {objective:.4f}, Gradient norm: {grad_norm:.6f}"
+        )
         optim.step()
         sched.step()
 
-    best_objective = max(best_objective, verifier(inputs, eps))
+    best_objective = max(best_objective, verifier(inputs, eps).min())
     return best_objective > 0
 
 
