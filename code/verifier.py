@@ -414,7 +414,8 @@ def analyze(
 
         # Use negative of outputs, since we want gradient ascent, not descent.
         # ReLU ignores all classes that are already verified.
-        loss = torch.nn.functional.relu(-outputs).sum()
+        # Log gives empirically better objectives.
+        loss = torch.nn.functional.relu(-outputs).sum().log()
         loss.backward()
 
         all_grads = []
