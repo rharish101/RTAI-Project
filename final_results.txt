@@ -1,0 +1,103 @@
+net,test case,ground truth,your output,your runtime,your point
+net0_fc1,final_img0_0.01950.txt,not verified,not verified,2.358,0
+net0_fc1,final_img1_0.01700.txt,verified,verified,1.009,1
+net0_fc1,final_img2_0.03600.txt,verified,verified,1.004,1
+net0_fc1,final_img3_0.02800.txt,not verified,not verified,1.9,0
+net0_fc1,final_img4_0.05700.txt,not verified,not verified,1.97,0
+net0_fc1,final_img5_0.01400.txt,verified,verified,0.923,1
+net0_fc1,final_img6_0.02400.txt,not verified,not verified,2.068,0
+net0_fc1,final_img7_0.02900.txt,verified,verified,1.104,1
+net0_fc1,final_img8_0.02100.txt,verified,verified,1.177,1
+net0_fc1,final_img9_0.02600.txt,verified,verified,1.035,1
+net1_fc1,final_img0_0.06800.txt,verified,verified,1.072,1
+net1_fc1,final_img1_0.03800.txt,not verified,not verified,1.973,0
+net1_fc1,final_img2_0.09100.txt,verified,verified,0.93,1
+net1_fc1,final_img3_0.09700.txt,verified,verified,1.094,1
+net1_fc1,final_img4_0.04900.txt,not verified,not verified,1.703,0
+net1_fc1,final_img5_0.02950.txt,not verified,not verified,1.83,0
+net1_fc1,final_img6_0.07400.txt,verified,verified,0.947,1
+net1_fc1,final_img7_0.03400.txt,not verified,not verified,1.878,0
+net1_fc1,final_img8_0.08600.txt,verified,verified,0.93,1
+net1_fc1,final_img9_0.05200.txt,verified,verified,0.936,1
+net0_fc2,final_img0_0.07400.txt,not verified,not verified,3.723,0
+net0_fc2,final_img1_0.08700.txt,verified,verified,1.256,1
+net0_fc2,final_img2_0.04900.txt,not verified,not verified,3.372,0
+net0_fc2,final_img3_0.08400.txt,verified,verified,0.983,1
+net0_fc2,final_img4_0.02800.txt,not verified,not verified,3.812,0
+net0_fc2,final_img5_0.09100.txt,verified,verified,1.079,1
+net0_fc2,final_img6_0.08200.txt,verified,verified,1.209,1
+net0_fc2,final_img7_0.07700.txt,verified,verified,1.313,1
+net0_fc2,final_img8_0.07900.txt,verified,verified,1.875,1
+net0_fc2,final_img9_0.08520.txt,verified,verified,1.371,1
+net1_fc2,final_img0_0.14600.txt,verified,verified,1.216,1
+net1_fc2,final_img1_0.02300.txt,not verified,not verified,5.781,0
+net1_fc2,final_img2_0.15100.txt,verified,verified,2.318,1
+net1_fc2,final_img3_0.18400.txt,verified,not verified,6.616,0
+net1_fc2,final_img4_0.10300.txt,verified,verified,0.801,1
+net1_fc2,final_img5_0.04400.txt,not verified,not verified,4.158,0
+net1_fc2,final_img6_0.15800.txt,verified,verified,2.307,1
+net1_fc2,final_img7_0.12200.txt,verified,verified,1.218,1
+net1_fc2,final_img8_0.13800.txt,verified,verified,1.441,1
+net1_fc2,final_img9_0.15100.txt,verified,verified,1.575,1
+net0_fc3,final_img0_0.15100.txt,verified,verified,6.43,1
+net0_fc3,final_img1_0.14100.txt,verified,not verified,7.049,0
+net0_fc3,final_img2_0.09700.txt,not verified,not verified,6.357,0
+net0_fc3,final_img3_0.15300.txt,verified,not verified,8.91,0
+net0_fc3,final_img4_0.07400.txt,not verified,not verified,5.539,0
+net0_fc3,final_img5_0.12900.txt,verified,not verified,5.849,0
+net0_fc3,final_img6_0.06800.txt,not verified,not verified,5.925,0
+net0_fc3,final_img7_0.08300.txt,not verified,not verified,6.529,0
+net0_fc3,final_img8_0.16400.txt,verified,verified,1.786,1
+net0_fc3,final_img9_0.12600.txt,verified,verified,1.211,1
+net1_fc3,final_img0_0.05500.txt,not verified,not verified,6.246,0
+net1_fc3,final_img1_0.07700.txt,verified,verified,1.435,1
+net1_fc3,final_img2_0.07600.txt,verified,verified,0.986,1
+net1_fc3,final_img3_0.08400.txt,verified,verified,1.003,1
+net1_fc3,final_img4_0.04600.txt,not verified,not verified,6.457,0
+net1_fc3,final_img5_0.08300.txt,verified,verified,1.463,1
+net1_fc3,final_img6_0.07200.txt,verified,verified,1.967,1
+net1_fc3,final_img7_0.08100.txt,verified,verified,1.503,1
+net1_fc3,final_img8_0.06100.txt,not verified,not verified,5.884,0
+net1_fc3,final_img9_0.07900.txt,verified,verified,1.45,1
+net0_fc4,final_img0_0.02800.txt,verified,verified,2.086,1
+net0_fc4,final_img1_0.01900.txt,verified,verified,1.443,1
+net0_fc4,final_img2_0.02750.txt,verified,verified,1.092,1
+net0_fc4,final_img3_0.03800.txt,verified,verified,1.31,1
+net0_fc4,final_img4_0.05500.txt,not verified,not verified,7.997,0
+net0_fc4,final_img5_0.04700.txt,not verified,not verified,8.308,0
+net0_fc4,final_img6_0.04800.txt,verified,verified,2.06,1
+net0_fc4,final_img7_0.04000.txt,verified,verified,1.672,1
+net0_fc4,final_img8_0.03900.txt,not verified,not verified,6.73,0
+net0_fc4,final_img9_0.03500.txt,verified,verified,1.053,1
+net1_fc4,final_img0_0.01400.txt,verified,verified,1.43,1
+net1_fc4,final_img1_0.01950.txt,verified,verified,1.622,1
+net1_fc4,final_img2_0.02500.txt,not verified,not verified,7.816,0
+net1_fc4,final_img3_0.01200.txt,verified,not verified,8.305,0
+net1_fc4,final_img4_0.02900.txt,not verified,not verified,7.472,0
+net1_fc4,final_img5_0.02300.txt,not verified,not verified,5.45,0
+net1_fc4,final_img6_0.01850.txt,verified,verified,0.982,1
+net1_fc4,final_img7_0.01500.txt,not verified,not verified,6.201,0
+net1_fc4,final_img8_0.01300.txt,verified,verified,1.272,1
+net1_fc4,final_img9_0.01600.txt,verified,verified,1.578,1
+net0_fc5,final_img0_0.03100.txt,verified,verified,1.54,1
+net0_fc5,final_img1_0.08900.txt,not verified,not verified,10.997,0
+net0_fc5,final_img2_0.03500.txt,verified,verified,1.629,1
+net0_fc5,final_img3_0.02900.txt,verified,verified,1.449,1
+net0_fc5,final_img4_0.02900.txt,verified,verified,1.555,1
+net0_fc5,final_img5_0.03200.txt,verified,verified,1.703,1
+net0_fc5,final_img6_0.02900.txt,verified,verified,1.553,1
+net0_fc5,final_img7_0.03200.txt,verified,verified,2.625,1
+net0_fc5,final_img8_0.06700.txt,not verified,not verified,10.572,0
+net0_fc5,final_img9_0.02850.txt,verified,verified,1.438,1
+net1_fc5,final_img0_0.11900.txt,verified,verified,3.884,1
+net1_fc5,final_img1_0.09400.txt,verified,verified,1.117,1
+net1_fc5,final_img2_0.02500.txt,not verified,not verified,10.658,0
+net1_fc5,final_img3_0.09800.txt,verified,verified,1.463,1
+net1_fc5,final_img4_0.13500.txt,verified,verified,1.639,1
+net1_fc5,final_img5_0.11400.txt,verified,verified,4.292,1
+net1_fc5,final_img6_0.03500.txt,verified,verified,1.24,1
+net1_fc5,final_img7_0.02800.txt,verified,verified,1.311,1
+net1_fc5,final_img8_0.04400.txt,not verified,not verified,11.446,0
+net1_fc5,final_img9_0.03100.txt,not verified,not verified,11.063,0
+
+total points: 63
